@@ -10,7 +10,7 @@
 - **Live Demo:** https://magic-picker.vercel.app
 - **Video Demo:** [YouTube URL — record using VIDEO_SCRIPT.md]
 
-The repository is public and includes the MIT `LICENSE` file. The video should be public on YouTube, shorter than three minutes, include audio, and show the live app working plus how WebMCP is used.
+The repository is public and includes the MIT `LICENSE` file. The video should be public on YouTube, shorter than three minutes, include clear audio (your own or synthetic narration), and show the live app working plus how WebMCP is used. If narrated in a language other than English, add an English translation or subtitles.
 
 ## 🎯 Problem Solved
 

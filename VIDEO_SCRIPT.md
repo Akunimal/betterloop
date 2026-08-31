@@ -2,6 +2,8 @@
 
 Target length: 2:30–2:50. The video must be public on YouTube and include clear audio.
 
+The narrator can be you or a synthetic/AI voice. Use English narration or add clear English subtitles/translation to satisfy the submission language requirement.
+
 ## 0:00–0:25 — The problem
 
 Show the landing hero and say:
@@ -49,7 +51,9 @@ Show the public URL and repository, then say:
 - [ ] Keep the video under three minutes.
 - [ ] Make the YouTube visibility **Public**, not Unlisted.
 - [ ] Record clear narration/audio throughout.
+- [ ] Use your own voice or an AI voice; if the narration is not English, add English subtitles or translation.
 - [ ] Show the public URL in the browser.
 - [ ] Show the working picker and returned result.
 - [ ] Say the words “WebMCP” and explain where `registerTool` is used.
 - [ ] Show the public repository and `LICENSE` file.
+- [ ] Do not include copyrighted music, third-party trademarks, or other material without permission.
