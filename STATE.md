@@ -18,6 +18,7 @@ The app is a polished WebMCP demo for agent continuity. The old file-transfer pr
 - Local visual event timeline.
 - Project-local Codex Stop hook with stop_hook_active loop protection.
 - Capability-aware post-activation status: native WebMCP, connected host MCP, or a truthful restart-required state.
+- Public interactive demo plus a reproducible judge guide for the full agent-integrated path.
 
 ## Known boundary
 
@@ -34,7 +35,8 @@ The remaining boundary is honest and intentional: a page cannot silently edit Co
 - src/webmcp/betterLoopTools.ts — WebMCP tools and registration.
 - src/webmcp/polyfill.ts — native-context detection and demo fallback.
 - scripts/betterloop-stop.cjs — synchronous Codex Stop hook.
-- scripts/betterloop-mcp.cjs — Luna-compatible STDIO MCP server and temporary localhost activation bridge.
+- scripts/betterloop-mcp.cjs — standard STDIO MCP server and temporary localhost activation bridge.
 - .codex/hooks.json — project hook definition.
 - .codex/config.toml — project-scoped MCP connection; intentionally not global.
 - .betterloop/config.example.json — optional host hook configuration.
+- JUDGE_GUIDE.md — public demo, Codex, and other MCP-capable host instructions.

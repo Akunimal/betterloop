@@ -1,15 +1,15 @@
 # BetterLoop
 
-BetterLoop is a user-activated continuity layer for Codex. It uses native WebMCP when the host exposes Site Tools and a project-scoped local MCP fallback when it does not, so the agent can close the gap between “the response stopped” and “the original job is actually finished”.
+BetterLoop is a user-activated continuity layer for agentic work. It uses native WebMCP when the host exposes Site Tools and a project-scoped standard MCP fallback when it does not, so the agent can close the gap between “the response stopped” and “the original job is actually finished”.
 
 Live demo: https://betterloop-akunimal.vercel.app
 
 ## The product
 
-The user opens BetterLoop in Codex’s built-in browser and presses one visible ON button. The page then registers a small set of site tools for the current browser session:
+The user opens BetterLoop in an agent-capable browser and presses one visible ON button. The page then registers a small set of site tools for the current browser session and activates the project MCP session, if the host has loaded it:
 
 - betterloop_hook_ready — confirm that Codex received the trusted SessionStart hook signal.
-- betterloop_host_status — report whether the Luna-compatible host MCP is connected and whether the user activated the temporary session.
+- betterloop_host_status — report whether the standard host MCP is connected and whether the user activated the temporary session.
 - betterloop_start — start a run for the exact original request.
 - betterloop_checkpoint — save the current phase and next action.
 - betterloop_verify_completion — check every important outcome with evidence.
@@ -19,7 +19,15 @@ The user opens BetterLoop in Codex’s built-in browser and presses one visible 
 - betterloop_finish — close the run only after verification passes.
 - betterloop_status — expose the current state and selected features.
 
-The dashboard makes the loop visible: active features, current phase, verification criteria, quota countdown, host-MCP status, and a local event timeline. After activation it reports the actual channel: native WebMCP, the Luna-compatible host MCP, or a pending Codex restart.
+The dashboard makes the loop visible: active features, current phase, verification criteria, quota countdown, host-MCP status, and a local event timeline. After activation it reports the actual channel: native WebMCP, a connected standard host MCP, or a pending host restart.
+
+## Judge quick start
+
+The public page is a working interactive demo even without a local agent. Open https://betterloop-akunimal.vercel.app, press `Turn BetterLoop ON`, confirm the feature toggles, and press `Start guided demo`. The manual controls exercise the core continuity flow: failed evidence, quota pause, recovery, and `100% verified`. This route proves the product behavior without requiring an account, API key, database, or local setup.
+
+For the full agent-integrated path, use the repository from a trusted Codex project. Codex loads `.codex/config.toml` and `.codex/hooks.json`; after the one-time trust/restart step, open the public page in the embedded browser and press `Turn BetterLoop ON`. The strip should show `Host MCP — Connected / Luna ready` on the current Codex configuration, or the equivalent connected standard-MCP state on another MCP-capable host. Ask the agent to call `betterloop_start` with the exact original task; the resulting run appears in the visual log.
+
+The host path is intentionally split: Vercel serves the visible page, while the local MCP process runs inside the judge’s agent environment. A public page cannot start a Node process on a judge’s computer by itself. See [JUDGE_GUIDE.md](JUDGE_GUIDE.md) for the complete reproducible route.
 
 ## The final 100% check
 
@@ -44,7 +52,7 @@ Until those fields exist, the tool returns a continuation instruction instead of
 
 ## Quota recovery
 
-The page never sleeps for five hours and cannot see Codex’s private quota state. When the agent reports a usage limit, BetterLoop records a five-hour recovery window unless the host supplies a more precise timestamp. A trusted local host watcher or a later App Server integration can call betterloop_resume when the window is available.
+The page never sleeps for five hours and cannot see Codex’s private quota state. When the agent reports a usage limit, BetterLoop records a five-hour recovery window unless the host supplies a more precise timestamp. The next trusted Stop turn or the agent can call `betterloop_resume` when the window is available.
 
 This is deliberately a conservative heuristic, not a claim that every model or account resets at exactly five hours.
 
@@ -54,7 +62,7 @@ The page uses document.modelContext.registerTool, the WebMCP site-tool contract.
 
 The optional Stop hook is a host-side Codex integration. A webpage cannot silently install a hook, change Codex approval policy, or wake a closed Codex session. Project hooks require Codex trust review and may require opening a new session or restarting the current one. BetterLoop also registers a `SessionStart` hook so Codex can announce the host integration to the model.
 
-### Model-compatible host MCP
+### Standard host MCP
 
 The repository includes `scripts/betterloop-mcp.cjs`, a dependency-free STDIO MCP server. `.codex/config.toml` connects it at project scope; Codex starts it when the trusted project session loads. The same process exposes a localhost control plane on `127.0.0.1:8767`. The visible ON button sends a short-lived session id and the selected toggles to that process, and a heartbeat renews it while the page remains open. When the page is OFF or the heartbeat expires, the server remains dormant and its continuity tools refuse to act.
 
@@ -90,6 +98,8 @@ The hook can be disabled without changing the app:
     BETTERLOOP_DISABLED=1
 
 or with a local .betterloop/config.json based on config.example.json. The committed example is intentionally not a secret and contains no credentials.
+
+The hook is additive, not a replacement for the MCP tools. If it is not loaded, the page and host MCP still work; the UI says `restart Codex` and does not claim automatic Stop-turn continuation is ready.
 
 ## Scope and safety
 

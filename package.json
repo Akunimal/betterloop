@@ -1,7 +1,7 @@
 {
   "name": "betterloop",
   "version": "1.0.0",
-  "description": "WebMCP continuity layer that helps Codex verify and continue long-running tasks",
+  "description": "WebMCP and MCP continuity layer that helps agents verify and continue long-running tasks",
   "type": "module",
   "scripts": {
     "dev": "vite",
