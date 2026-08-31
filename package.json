@@ -1,7 +1,7 @@
 {
   "name": "magic-picker",
   "version": "1.0.0",
-  "description": "WebMCP human handoff that lets browser agents request files through page-owned UI",
+  "description": "WebMCP file resolver — agents resolve files automatically without picker modals",
   "type": "module",
   "scripts": {
     "dev": "vite",

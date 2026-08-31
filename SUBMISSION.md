@@ -2,7 +2,7 @@
 
 ## 📋 Project Overview
 
-**Magic Picker** is a focused human-handoff tool for browser agents. It lets an agent request a file from a person through a page-owned UI, keeping the agent out of the native file-dialog dead end.
+**Magic Picker** is a WebMCP file resolver for browser agents. When an AI agent needs a file, Magic Picker resolves it automatically from the user's project directory — no picker modal, no flow interruption.
 
 ## 🔗 Links
 
@@ -10,102 +10,97 @@
 - **Live Demo:** https://magic-picker.vercel.app
 - **Video Demo:** [YouTube URL — record using VIDEO_SCRIPT.md]
 
-The repository is public and includes the MIT `LICENSE` file. The video should be public on YouTube, shorter than three minutes, include clear audio (your own or synthetic narration), and show the live app working plus how WebMCP is used. If narrated in a language other than English, add an English translation or subtitles.
-
 ## 🎯 Problem Solved
 
-AI agents running in web browsers can lose the thread when a workflow reaches a native OS dialog, browser popup, or another human-only interaction. A page cannot control those surfaces directly, but it can expose a structured WebMCP handoff for the interactions it owns.
+AI agents running in web browsers hit a wall when they need a file. The agent can't operate native OS file dialogs, so the workflow stalls — or the user has to manually intervene with screenshots, copy-paste, and context switching.
 
 ## Why WebMCP is the right fit
 
-WebMCP is the contract between the page and the agent: the page advertises a precise action, the agent can invoke it by name, and the page can keep the execution pending while a person completes the interaction. That is more reliable and understandable than asking an agent to guess how to operate a UI it cannot control.
+WebMCP is the contract between the page and the agent: the page advertises a precise action (`magic_picker`), the agent invokes it by name, and the page resolves the file automatically. No modal, no human interruption, no flow break.
 
 ## Before and after
 
-- **Before:** the agent reaches a native file dialog it cannot operate, so the workflow stalls.
-- **After:** the agent calls `magic_picker`, the page presents a clear handoff, the person selects or drops a file, and the tool returns structured data.
+- **Before:** The agent reaches a native file dialog it cannot operate. The workflow stalls, or the user has to manually provide the file.
+- **After:** The agent calls `magic_picker` with a file path or type. Magic Picker resolves it instantly from the project directory. The agent continues without interruption.
 
 ## 💡 Solution
 
-Magic Picker provides a WebMCP handoff that:
-1. Receives file requests from AI agents
-2. Shows a web-based file picker UI to the user
-3. Converts selected files to base64
-4. Returns the data directly to the agent
+Magic Picker provides a WebMCP file resolver that:
 
-The agent does not need to operate the native picker. The user remains in control of the selection. If the host navigates away or aborts the tool, the page closes the pending handoff instead of leaving a dead request behind.
+1. **Grants once** — User selects their project directory one time
+2. **Resolves automatically** — When the agent requests a file, it's found and read instantly
+3. **Returns base64** — File data is returned directly to the agent
+4. **Persists access** — IndexedDB stores the directory handle between sessions
+
+The File System Access API maintains a persistent connection to the user's project directory. No modal appears. The agent keeps moving.
 
 ## 🛠️ Technical Implementation
 
 ### WebMCP Tool Registration
 
 ```javascript
-window.modelContext.registerTool({
+// Registers with navigator.modelContext (native WebMCP) or window.modelContext (polyfill)
+navigator.modelContext.registerTool({
   name: "magic_picker",
-  title: "Request a file from the user",
-  description: "Ask the user to choose a file in the page UI and return metadata plus base64 data",
+  title: "Resolve a file from the project directory",
+  description: "Find and read a file automatically without showing a picker",
   inputSchema: {
     type: "object",
     properties: {
       accept: { type: "string" },
       multiple: { type: "boolean" },
       maxSizeMB: { type: "number" },
-      prompt: { type: "string" }
+      prompt: { type: "string", description: "File path or description" }
     }
   },
-  annotations: { readOnlyHint: true, untrustedContentHint: true },
-  execute: async (input, { signal }) => {
-    // Shows web UI, user selects file, returns base64
+  execute: async (input) => {
+    // Auto-resolve: path detection → file search → read → base64
   }
 });
 ```
 
 ### Key Features
 
-- **Drag & drop** file selection
-- **File type filtering** via `accept` parameter
-- **Size validation** with configurable limits
-- **Base64 conversion** for direct agent consumption
-- **User-friendly UI** with clear prompts
+- **Auto-resolve** — No modal, no user interruption
+- **Path detection** — Extracts file paths from agent prompts
+- **File search** — Walks directory tree matching accept patterns
+- **Persistent access** — IndexedDB stores directory handle
+- **WebMCP native** — Cross-tab routing via navigator.modelContext
 
 ## 📊 Judging Criteria Alignment
 
-### WebMCP Leverage
-✅ **Genuine, non-trivial implementation**
-- Uses native WebMCP API (`window.modelContext.registerTool`)
-- Proper input schema validation
-- Async execution with error handling
-- Real file processing pipeline
+### WebMCP Leverage ✅
+- Uses native WebMCP API (`navigator.modelContext.registerTool`)
+- Proper input schema with file type, size, and path parameters
+- Async execution with automatic resolution
+- Cross-tab routing via WebMCP native transport
 
-### Execution
-✅ **Working, runnable project**
+### Execution ✅
 - Complete React + TypeScript implementation
-- Local development server
-- Test panel for validation
-- WebMCP console for direct tool invocation
+- File System Access API integration
+- IndexedDB persistence
 - Build process for production
 
-### Potential Impact
-✅ **Solves a real problem**
-- **Before:** Impossible for browser agents to access files
-- **After:** Agents can request files through web UI
-- **Use cases:** Document analysis, image processing, data import, media collection
+### Potential Impact ✅
+- **Before:** Impossible for browser agents to access files without stalling
+- **After:** Agents resolve files automatically from the project directory
+- **Use cases:** Code analysis, document review, image processing, data import
 
-### Creativity & Ambition
-✅ **Focused and extensible concept**
-- A reusable human-handoff pattern, demonstrated by `magic_picker`
-- Explicitly separates page-owned interactions from host-owned popups and terminal prompts
-- Leaves a clear path for future handoff tools without over-scoping this submission
+### Creativity & Ambition ✅
+- File resolver instead of file picker — the agent never loses the thread
+- Multi-strategy resolution: path detection, file search, recursive traversal
+- Persistent directory access without repeated user prompts
+- Native WebMCP for cross-tab agent communication
 
 ## 🎥 Video Demo Script (3 minutes)
 
-**0:00-0:30:** Introduction - Explain why browser agents lose the thread at human-only interactions
+**0:00-0:30:** Problem — Browser agents can't access files without stalling the workflow
 
-**0:30-1:30:** Live demo - Show ChatGPT invoking magic_picker, user selecting a file, agent receiving base64 data
+**0:30-1:30:** Demo — Show agent requesting a file, Magic Picker resolving it automatically, agent continuing
 
-**1:30-2:30:** Technical explanation - Show the code, explain how WebMCP registration works, demonstrate file conversion
+**1:30-2:30:** Technical — Show File System Access API, path detection, WebMCP registration
 
-**2:30-3:00:** Impact - Explain the handoff pattern and the boundary between page and host
+**2:30-3:00:** Impact — The agent-native web where files resolve themselves
 
 ## 🚀 Setup Instructions
 
@@ -113,9 +108,8 @@ window.modelContext.registerTool({
 2. Run `npm install`
 3. Run `npm run dev`
 4. Open http://localhost:3000
-5. For real WebMCP testing: Open in ChatGPT browser or Chrome 149+ with WebMCP enabled
-
-For a ready-to-record walkthrough, see [VIDEO_SCRIPT.md](VIDEO_SCRIPT.md). For the navigation, popup, OAuth, and terminal boundary, see [PICKER_BRIDGE.md](PICKER_BRIDGE.md).
+5. Click **Select project directory** and choose your project folder
+6. For WebMCP testing: Open in Chrome with `chrome://flags/#web-mcp` enabled
 
 ## 📄 License
 

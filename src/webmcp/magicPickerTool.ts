@@ -1,129 +1,150 @@
-import { pickerState } from '../state/pickerState';
-import { FileResult, WebMCPExecuteOptions } from '../webmcp-types';
+import { resolveFile, initResolver, hasDirectoryPermission, getDirectoryName, selectDirectory } from '../state/fileResolver';
+import { FileResult } from '../webmcp-types';
 
 const TOOL_NAME = 'magic_picker';
-type ModelContextLike = {
-  registerTool: (tool: unknown) => void | Promise<void>;
-  getTool?: (name: string) => unknown;
-  getTools?: () => Promise<Array<{ name?: string }>>;
-};
 
-let registeredContext: ModelContextLike | null = null;
-let inFlightRegistration: Promise<boolean> | null = null;
+let registered = false;
+let registrationMode: 'native' | 'polyfill' | 'none' = 'none';
 
-function getModelContext(): ModelContextLike | null {
-  const documentContext = (document as Document & { modelContext?: ModelContextLike }).modelContext;
-  const windowContext = (window as Window & { modelContext?: ModelContextLike }).modelContext;
-  return documentContext || windowContext || null;
-}
-
+/**
+ * Register magic_picker with the browser's native WebMCP API.
+ *
+ * When the AI agent invokes this tool, it resolves files automatically
+ * from the user's project directory without showing a picker modal.
+ */
 export async function registerMagicPickerTool(): Promise<boolean> {
-  const modelContext = getModelContext();
+  if (registered) return true;
 
-  if (!modelContext || typeof modelContext.registerTool !== 'function') {
-    console.warn('WebMCP not available in this browser');
-    return false;
-  }
+  // Restore directory permission from IndexedDB
+  await initResolver();
 
-  if (registeredContext === modelContext) {
-    return true;
-  }
+  const inputSchema = {
+    type: 'object' as const,
+    properties: {
+      accept: {
+        type: 'string',
+        description: "Accepted MIME types or extensions, for example 'image/*' or '.pdf'.",
+        default: '*'
+      },
+      multiple: {
+        type: 'boolean',
+        description: 'Whether the user may select more than one file.',
+        default: false
+      },
+      maxSizeMB: {
+        type: 'number',
+        description: 'Maximum size allowed for each file in megabytes.',
+        default: 10
+      },
+      prompt: {
+        type: 'string',
+        description: 'Short explanation of why the file is needed. Can include a file path like "src/App.tsx".'
+      }
+    },
+    required: []
+  };
 
-  if (inFlightRegistration) {
-    return inFlightRegistration;
-  }
+  /**
+   * Execute handler — resolves files automatically from the project directory.
+   * No modal, no user interruption. The AI gets the file and continues.
+   */
+  const executeHandler = async (input: Record<string, unknown>): Promise<FileResult> => {
+    const accept = typeof input.accept === 'string' && input.accept.trim() ? input.accept : '*';
+    const multiple = input.multiple === true;
+    const maxSizeMB = typeof input.maxSizeMB === 'number' && input.maxSizeMB > 0 ? input.maxSizeMB : 10;
+    const prompt = typeof input.prompt === 'string' && input.prompt.trim() ? input.prompt : '';
 
-  const registration = (async () => {
-    if (typeof modelContext.getTool === 'function' && modelContext.getTool(TOOL_NAME)) {
-      registeredContext = modelContext;
-      return true;
+    console.log('🪄 Magic Picker resolving:', { accept, prompt });
+
+    // Resolve file(s) automatically — no modal
+    const result = await resolveFile({ accept, multiple, maxSizeMB, prompt });
+
+    if (result.success) {
+      console.log('🪄 Magic Picker resolved:', result.fileName);
+    } else {
+      console.warn('🪄 Magic Picker could not resolve:', result.error);
     }
 
-    if (typeof modelContext.getTools === 'function') {
-      try {
-        const tools = await modelContext.getTools();
-        if (tools.some(tool => tool.name === TOOL_NAME)) {
-          registeredContext = modelContext;
-          return true;
-        }
-      } catch {
-        // Some early WebMCP implementations expose registration but not discovery.
+    // Emit event for the resolver log UI
+    window.dispatchEvent(new CustomEvent('magic-picker:resolve', {
+      detail: {
+        file: result.fileName || prompt || 'unknown',
+        status: result.success ? 'resolved' : 'error',
+        detail: result.error
       }
-    }
+    }));
 
-    const tool = {
-      name: TOOL_NAME,
-      title: 'Request a file from the user',
-      description: 'Ask the user to choose a file in the page UI. Returns file metadata and base64 data without requiring the agent to operate a native file dialog.',
-      annotations: {
-        readOnlyHint: true,
-        untrustedContentHint: true
-      },
-      inputSchema: {
-        type: 'object',
-        properties: {
-          accept: {
-            type: 'string',
-            description: "Accepted MIME types or extensions, for example 'image/*' or '.pdf'.",
-            default: '*'
-          },
-          multiple: {
-            type: 'boolean',
-            description: 'Whether the user may select more than one file.',
-            default: false
-          },
-          maxSizeMB: {
-            type: 'number',
-            description: 'Maximum size allowed for each file in megabytes.',
-            default: 10
-          },
-          prompt: {
-            type: 'string',
-            description: 'Short explanation of why the file is needed.',
-            default: 'Please select a file'
-          }
-        },
-        required: []
-      },
-      execute: async (
-        input: Record<string, unknown>,
-        options: WebMCPExecuteOptions = {}
-      ): Promise<FileResult> => {
-        console.log('🪄 Magic Picker invoked with options:', input);
+    return result;
+  };
 
-        const pickerOptions = {
-          accept: typeof input.accept === 'string' && input.accept.trim() ? input.accept : '*',
-          multiple: input.multiple === true,
-          maxSizeMB: typeof input.maxSizeMB === 'number' && input.maxSizeMB > 0 ? input.maxSizeMB : 10,
-          prompt: typeof input.prompt === 'string' && input.prompt.trim() ? input.prompt : 'Please select a file'
-        };
-
-        const result = await pickerState.requestFile(pickerOptions, options.signal);
-        console.log('🪄 Magic Picker result:', result);
-        return result;
-      }
-    };
-
+  // --- Strategy 1: Native WebMCP (navigator.modelContext) ---
+  const nativeCtx = (navigator as any).modelContext;
+  if (nativeCtx && typeof nativeCtx.registerTool === 'function') {
     try {
-      await modelContext.registerTool(tool);
-      registeredContext = modelContext;
+      nativeCtx.registerTool({
+        name: TOOL_NAME,
+        title: 'Request a file from the project directory',
+        description: 'Resolve a file from the user\'s project directory. Returns file metadata and base64 data automatically without showing a picker.',
+        annotations: {
+          readOnlyHint: true,
+          untrustedContentHint: true
+        },
+        inputSchema,
+        execute: executeHandler
+      });
+      registered = true;
+      registrationMode = 'native';
       window.dispatchEvent(new Event('magic-picker:registered'));
-      console.log('✅ Magic Picker tool registered with WebMCP');
+      console.log('✅ Magic Picker registered via native WebMCP (cross-tab)');
+      console.log('   Project directory:', getDirectoryName() || 'not set');
+      return true;
+    } catch (error) {
+      console.warn('🪄 Native WebMCP registration failed, trying polyfill...', error);
+    }
+  }
+
+  // --- Strategy 2: Local polyfill (window.modelContext) ---
+  const polyfillCtx = (window as any).modelContext;
+  if (polyfillCtx && typeof polyfillCtx.registerTool === 'function') {
+    try {
+      polyfillCtx.registerTool({
+        name: TOOL_NAME,
+        title: 'Request a file from the project directory',
+        description: 'Resolve a file from the user\'s project directory. Returns file metadata and base64 data automatically without showing a picker.',
+        annotations: {
+          readOnlyHint: true,
+          untrustedContentHint: true
+        },
+        inputSchema,
+        execute: executeHandler
+      });
+      registered = true;
+      registrationMode = 'polyfill';
+      window.dispatchEvent(new Event('magic-picker:registered'));
+      console.log('✅ Magic Picker registered via local polyfill (same-tab only)');
+      console.log('   Project directory:', getDirectoryName() || 'not set');
       return true;
     } catch (error) {
       console.error('❌ Magic Picker registration failed:', error);
-      return false;
-    } finally {
-      inFlightRegistration = null;
     }
-  })();
+  }
 
-  inFlightRegistration = registration;
-  return registration;
+  console.warn('🪄 Magic Picker: No WebMCP transport available');
+  return false;
 }
 
 export function isMagicPickerRegistered(): boolean {
-  return registeredContext !== null;
+  return registered;
 }
+
+export function isCrossTabCapable(): boolean {
+  return registrationMode === 'native';
+}
+
+export function getRegistrationMode(): string {
+  return registrationMode;
+}
+
+export { hasDirectoryPermission, getDirectoryName, selectDirectory };
 
 export const magicPickerToolName = TOOL_NAME;

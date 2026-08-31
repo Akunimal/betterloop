@@ -1,26 +1,23 @@
 # ✦ Magic Picker
 
-Magic Picker is a focused human-handoff tool for browser agents. It lets an agent ask the user for a file through a page-owned UI, so the agent never has to operate a native file dialog itself.
+Magic Picker is a WebMCP file resolver for browser agents. When an AI agent needs a file, Magic Picker resolves it automatically from the user's project directory — no picker modal, no flow interruption.
 
-**Live demo:** https://magic-picker.vercel.app  
-**Agent quickstart:** https://magic-picker.vercel.app/agent-demo.html
+**Live demo:** https://magic-picker.vercel.app
 
 ## 🎯 The Problem
 
-AI agents running in sandboxed browsers **cannot interact with native OS dialogs** like file pickers. This is a fundamental security limitation of web browsers. Computer use agents cannot simulate these dialogs because they run outside the browser context.
+AI agents running in sandboxed browsers **cannot interact with native OS dialogs** like file pickers. When a workflow reaches that boundary, the agent stalls — either losing the thread or forcing the user to manually intervene with screenshots and copy-paste.
 
 ## 💡 The Solution
 
-Magic Picker provides a WebMCP handoff that:
+Magic Picker is a **file resolver, not a file picker**:
 
-1. **Receives a request** from an AI agent for a file
-2. **Shows a web UI** to the user for file selection (drag & drop or click)
-3. **Converts the file** to base64 and returns it directly to the agent
-4. **Cancels cleanly** if the browser host aborts the tool or unloads the page
+1. **Grant once** — Select your project directory one time. Magic Picker remembers via IndexedDB.
+2. **Agent requests** — The agent calls `magic_picker` with a file type or path hint.
+3. **Auto-resolve** — Magic Picker searches your directory tree and reads the file automatically.
+4. **No interruption** — The agent gets the data and continues without any modal or UI blocking.
 
-This does not intercept arbitrary OS dialogs, browser chrome, OAuth popups, or terminal prompts. Those surfaces belong to the host or the CLI. See [PICKER_BRIDGE.md](PICKER_BRIDGE.md) for the boundary and the path to future handoff adapters.
-
-This makes file selection **possible** in scenarios where it was previously **impossible**.
+The File System Access API maintains a persistent connection to the user's project directory. Subsequent agent requests resolve instantly without prompting the user again.
 
 ## 🚀 Quick Start
 
@@ -44,13 +41,11 @@ Open http://localhost:3000
 npm run build
 ```
 
-The public repository includes an MIT `LICENSE` file so the project is visibly open source to reviewers.
-
 ## 🛠️ WebMCP Tool
 
 ### `magic_picker`
 
-**Description:** Ask the user to choose a file in the page UI and return metadata plus base64 data.
+**Description:** Resolve a file from the user's project directory. Returns file metadata and base64 data automatically without showing a picker.
 
 **Parameters:**
 
@@ -59,78 +54,72 @@ The public repository includes an MIT `LICENSE` file so the project is visibly o
 | `accept` | string | `"*"` | File types to accept (e.g., `"image/*"`, `".pdf"`) |
 | `multiple` | boolean | `false` | Allow multiple file selection |
 | `maxSizeMB` | number | `10` | Maximum file size in MB |
-| `prompt` | string | `"Please select a file"` | Message shown to the user |
+| `prompt` | string | — | Short explanation or file path hint (e.g., `"src/App.tsx"`) |
 
 **Returns:**
 
 ```json
 {
   "success": true,
-  "fileName": "example.png",
-  "fileSize": 123456,
-  "fileType": "image/png",
-  "base64Data": "iVBORw0KGgoAAAANSUhEUgAA..."
+  "fileName": "App.tsx",
+  "fileSize": 12345,
+  "fileType": "text/typescript",
+  "base64Data": "aW1wb3J0IFJlYWN0..."
 }
 ```
 
-When `multiple` is `true`, the result includes a `files` array and `fileCount`. File data is processed entirely in the browser.
+## 🧭 How Resolution Works
 
-## 🧭 Navigation and popup boundary
+Magic Picker uses a multi-strategy approach:
 
-WebMCP tools are tab-bound. The current WebMCP draft passes an `AbortSignal` to every tool execution and cancels pending executions when the relevant document is destroyed. Magic Picker listens for that cancellation and closes its UI, but a normal web page cannot keep the original agent promise alive after a top-level navigation.
+1. **Path detection** — If the prompt contains a path like `src/App.tsx`, it tries that directly.
+2. **File search** — If no path is found, it walks the directory tree matching against `accept` patterns.
+3. **Recursive traversal** — Skips `.git`, `node_modules`, and dotfiles automatically.
 
-For Google Cloud CLI authentication, prefer the CLI's console/device paths when a browser popup is unreliable:
+The File System Access API (`showDirectoryPicker`) requires one user interaction to grant access. After that, the directory handle is persisted in IndexedDB and restored on page load.
 
-```bash
-gcloud init --console-only
-gcloud auth login --no-launch-browser
-```
-
-Interception of terminal prompts, OAuth windows, and OS-level dialogs requires a Codex/ChatGPT host integration, browser extension, or local companion process; it is outside the authority of a Vercel-hosted page.
-
-## 🎮 How to Test
+## 🧪 How to Test
 
 ### Option 1: Local Testing
 
 1. Run `npm run dev`
 2. Open http://localhost:3000
-3. Use the **Test Panel** to simulate an agent requesting a file
-4. Or use the **WebMCP Console** to list the tool; direct invocation is available in the local polyfill preview
+3. Click **Select project directory** and choose your project folder
+4. The status changes to **Connected** — agents can now resolve files
 
-### Option 2: Real WebMCP Testing
+### Option 2: WebMCP Testing
 
-1. Open the app in **ChatGPT's built-in browser** or **Chrome 149+** with WebMCP enabled
-2. Ask ChatGPT: *"Use magic_picker to ask me for an image file"*
-3. ChatGPT should invoke the WebMCP tool and show the file picker UI
-4. Select a file, and ChatGPT will receive it as base64
-
-For the submission recording, use [VIDEO_SCRIPT.md](VIDEO_SCRIPT.md). The implementation boundary and gcloud/OAuth guidance are in [PICKER_BRIDGE.md](PICKER_BRIDGE.md).
+1. Open the app in **Chrome with WebMCP enabled** (`chrome://flags/#web-mcp`)
+2. Open another tab with a WebMCP-enabled agent
+3. The agent should discover `magic_picker` as an available tool
+4. Ask: *"Read the file src/App.tsx"*
+5. The file is resolved automatically and returned to the agent
 
 ## 🏗️ Architecture
 
 ```
 AI Agent (ChatGPT, Claude, etc.)
-    ↓ WebMCP call
-magic_picker tool
-    ↓ Shows UI
-Web-based file picker (drag & drop / click)
-    ↓ User selects file
+    ↓ WebMCP call (navigator.modelContext)
+magic_picker tool (auto-resolve)
+    ↓ File System Access API
+Project directory (persistent handle)
+    ↓ Search + read
 File → Base64 conversion
     ↓ Returns to agent
 Agent receives file data directly
 ```
 
-The same handoff pattern could later support confirmations or forms, but this submission intentionally keeps one concrete tool: `magic_picker`.
-
 ## 📝 Use Cases
 
-- **Document analysis:** Agent requests a PDF from the user
-- **Image processing:** Agent asks for an image to edit or analyze
-- **Data import:** Agent requests a CSV or JSON file
-- **Media upload:** Agent collects photos/videos from the user
+- **Code analysis:** Agent reads source files from the project
+- **Document review:** Agent accesses PDFs, markdown, or config files
+- **Image processing:** Agent reads images for analysis or editing
+- **Data import:** Agent loads CSV, JSON, or YAML from the project
 
 ## 🔒 Security Considerations
 
+- Directory access requires explicit user permission (File System Access API)
+- Permission is persisted but can be revoked at any time
 - Files are processed entirely client-side
 - No files are sent to external servers
 - Maximum file size limits prevent abuse

@@ -1,18 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { isMagicPickerRegistered } from '../webmcp/magicPickerTool';
+import { isMagicPickerRegistered, getRegistrationMode } from '../webmcp/magicPickerTool';
 
 export const StatusBar: React.FC = () => {
-  const [webmcpAvailable, setWebmcpAvailable] = useState(false);
   const [toolRegistered, setToolRegistered] = useState(false);
-  const [isPolyfill, setIsPolyfill] = useState(false);
+  const [mode, setMode] = useState('none');
 
   useEffect(() => {
     const updateStatus = () => {
-      const modelContext = (document as Document & { modelContext?: { __magicPickerPolyfill?: boolean } }).modelContext
-        || (window as Window & { modelContext?: { __magicPickerPolyfill?: boolean } }).modelContext;
-      setWebmcpAvailable(Boolean(modelContext));
       setToolRegistered(isMagicPickerRegistered());
-      setIsPolyfill(Boolean(modelContext?.__magicPickerPolyfill));
+      setMode(getRegistrationMode());
     };
 
     updateStatus();
@@ -20,11 +16,19 @@ export const StatusBar: React.FC = () => {
     return () => window.removeEventListener('magic-picker:registered', updateStatus);
   }, []);
 
+  const modeLabel = mode === 'native'
+    ? 'WebMCP native (cross-tab)'
+    : mode === 'polyfill'
+    ? 'polyfill (same-tab only)'
+    : 'not registered';
+
   return (
     <div className="status-bar" aria-label="WebMCP status">
-      <div>WebMCP: <strong>{webmcpAvailable ? 'ready' : 'unavailable'}</strong></div>
       <div>Tool: <strong>{toolRegistered ? 'registered' : 'pending'}</strong></div>
-      <span className="status-mode">{isPolyfill ? 'local polyfill preview' : 'native browser API'}</span>
+      <div>WebMCP: <strong>{modeLabel}</strong></div>
+      {mode === 'none' && (
+        <span className="status-mode">enable in chrome://flags/#web-mcp</span>
+      )}
     </div>
   );
 };

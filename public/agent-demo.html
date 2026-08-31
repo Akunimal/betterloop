@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <meta name="description" content="WebMCP quickstart for Magic Picker, a page-owned human handoff for browser agents." />
+    <meta name="description" content="WebMCP quickstart for Magic Picker, a file resolver for browser agents." />
     <title>Magic Picker — WebMCP Agent Demo</title>
     <style>
         body { font-family: Arial, sans-serif; max-width: 800px; margin: 40px auto; padding: 20px; }
@@ -15,43 +15,50 @@
 
     <div class="demo-box">
         <h2>For AI Agents</h2>
-        <p>This page demonstrates the <strong>magic_picker</strong> WebMCP tool: a focused human handoff for asking a user to choose a file in page-owned UI.</p>
+        <p>Magic Picker is a <strong>file resolver</strong>, not a file picker. When you need a file, Magic Picker resolves it automatically from the user's project directory — no modal, no flow interruption.</p>
     </div>
 
     <h2>Available Tool</h2>
     <pre>
 {
   "name": "magic_picker",
-  "description": "Ask the user to choose a file in the page UI and return metadata plus base64 data",
+  "description": "Resolve a file from the user's project directory automatically",
   "parameters": {
     "accept": "image/*",
     "multiple": false,
-    "maxSizeMB": 5,
-    "prompt": "Please select an image file"
+    "maxSizeMB": 10,
+    "prompt": "src/App.tsx"
   }
 }
     </pre>
 
     <h2>Example Usage</h2>
-    <p>If you're ChatGPT or another WebMCP-enabled agent, try this command:</p>
+    <p>If you're ChatGPT, Claude, or another WebMCP-enabled agent, try:</p>
     <pre>
-"Use magic_picker to ask me for an image file"
+"Read the file src/App.tsx"
+"Find and analyze the config.json"
+"Get the image from assets/logo.png"
     </pre>
 
     <h2>Expected Result</h2>
     <pre>
 {
   "success": true,
-  "fileName": "example.png",
-  "fileSize": 123456,
-  "fileType": "image/png",
-  "base64Data": "iVBORw0KGgoAAAANSUhEUgAA..."
+  "fileName": "App.tsx",
+  "fileSize": 12345,
+  "fileType": "text/typescript",
+  "base64Data": "aW1wb3J0IFJlYWN0..."
 }
     </pre>
 
     <div class="demo-box">
-        <h2>Why This Matters</h2>
-        <p>Browser agents should not be expected to operate native OS dialogs. Magic Picker gives them a structured request while the person chooses the file. The page does not intercept arbitrary OAuth popups, terminal prompts, or browser chrome.</p>
+        <h2>How It Works</h2>
+        <p>Magic Picker uses the File System Access API to maintain a persistent connection to the user's project directory. After the user grants access once, all subsequent agent requests resolve automatically. No modal appears. The agent keeps moving.</p>
+    </div>
+
+    <div class="demo-box">
+        <h2>Setup</h2>
+        <p>Open <a href="https://magic-picker.vercel.app">magic-picker.vercel.app</a> and click "Select project directory". Once connected, any WebMCP-enabled agent can resolve files from that directory.</p>
     </div>
 </body>
 </html>

@@ -1,50 +1,59 @@
-# Magic Picker — video demo script
+# Magic Picker — Video Demo Script
 
 Target length: 2:30–2:50. The video must be public on YouTube and include clear audio.
-
-The narrator can be you or a synthetic/AI voice. Use English narration or add clear English subtitles/translation to satisfy the submission language requirement.
 
 ## 0:00–0:25 — The problem
 
 Show the landing hero and say:
 
-> Browser agents are good at using pages, but they cannot operate a native operating-system file dialog. When a workflow reaches that boundary, the agent can lose the thread. Magic Picker turns that dead end into a visible human handoff owned by the page.
+> Browser agents are powerful, but they hit a wall when they need a file. The agent can't operate a native file dialog, so the workflow stalls — or the user has to manually intervene. Magic Picker turns that dead end into an automatic resolution.
 
 ## 0:25–1:15 — The working demo
 
-1. Scroll to **Live demo**.
-2. Click **Open the picker**.
-3. Say:
+1. Open the app at magic-picker.vercel.app
+2. Click **Select project directory** and choose a project folder
+3. Show the status change to **Connected**
+4. Say:
 
-> This button simulates the same async action as a WebMCP tool call. The request is pending, the user sees exactly what is needed, and the user remains in control.
+> One time. That's all it takes. Magic Picker now has persistent access to your project directory via the File System Access API.
 
-4. Select a small image file.
-5. Show the tool result and image preview.
-6. Say:
+5. Open another tab with a WebMCP-enabled agent (or simulate the call)
+6. Show the agent requesting a file: *"Read the file src/App.tsx"*
+7. Show the resolver log — the file appears instantly
+8. Say:
 
-> The file never leaves the browser. Magic Picker validates the type and size, converts the file to base64 locally, and returns the metadata plus data to the waiting tool call.
+> No modal. No picker. The agent asked, Magic Picker found and read the file automatically, and the agent continues without interruption.
 
-## 1:15–1:55 — The WebMCP surface
+## 1:15–1:55 — The technical flow
 
-Show the WebMCP console and run `{"action":"list"}`. Then show `src/webmcp/magicPickerTool.ts` and say:
+Show the code architecture and say:
 
-> The page registers `magic_picker` through `document.modelContext.registerTool`. The schema gives the agent a small, explicit contract: accepted types, multiple files, size limit, and a user-facing prompt. The execution stays pending until the human completes or cancels the handoff.
+> Magic Picker registers via WebMCP's native navigator.modelContext. When the agent invokes magic_picker, the tool uses path detection to extract the file path from the prompt. If no path is found, it walks the directory tree matching against accept patterns. The file is read via the File System Access API and returned as base64.
 
-If WebMCP is available in the test browser, show the registered tool in the browser’s WebMCP inspector or ask the agent:
+Show `src/state/fileResolver.ts` briefly, highlighting:
+- `extractPathFromPrompt()` — smart path detection
+- `walkDirectory()` — recursive file search
+- `readFileFromHandle()` — File System Access API read
 
-> Use magic_picker to ask me for an image file.
+Show `src/webmcp/magicPickerTool.ts` briefly, highlighting:
+- `navigator.modelContext.registerTool()` — native WebMCP registration
+- `executeHandler` — auto-resolve without modal
 
-## 1:55–2:25 — Reliability and boundaries
+## 1:55–2:25 — The persistence story
 
-Show `PICKER_BRIDGE.md` or the boundary card and say:
+Show the IndexedDB storage and say:
 
-> The implementation also listens for WebMCP cancellation and page unload, so navigation does not leave a dead modal or unresolved local request. This is intentionally focused: the page can own this handoff, but it cannot intercept arbitrary OS dialogs, Google OAuth popups, terminal prompts, or browser chrome. Those require host-level integration.
+> The directory handle persists in IndexedDB between sessions. Refresh the page, come back tomorrow — the connection is still there. The user can revoke access at any time through the browser's permission system.
+
+Show the StatusBar indicating **WebMCP: native (cross-tab)** and say:
+
+> When WebMCP is enabled, agents in other tabs can discover and invoke magic_picker. The browser handles the routing. No extensions needed.
 
 ## 2:25–2:50 — Close
 
 Show the public URL and repository, then say:
 
-> Magic Picker is a small, concrete example of the agent-native web: the agent requests, the human decides, and the page returns a structured result. The code, live demo, and setup instructions are public.
+> Magic Picker is a file resolver, not a file picker. The agent asks, the resolver answers, and the workflow never stops. The code, live demo, and setup instructions are public.
 
 ## Recording checklist
 
@@ -53,7 +62,7 @@ Show the public URL and repository, then say:
 - [ ] Record clear narration/audio throughout.
 - [ ] Use your own voice or an AI voice; if the narration is not English, add English subtitles or translation.
 - [ ] Show the public URL in the browser.
-- [ ] Show the working picker and returned result.
-- [ ] Say the words “WebMCP” and explain where `registerTool` is used.
+- [ ] Show the directory connection and auto-resolution working.
+- [ ] Say the words "WebMCP" and explain where `registerTool` is used.
 - [ ] Show the public repository and `LICENSE` file.
 - [ ] Do not include copyrighted music, third-party trademarks, or other material without permission.

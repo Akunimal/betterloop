@@ -1171,3 +1171,133 @@ code {
     bottom: 12px;
   }
 }
+
+/* ------------------------------------------------------------------ */
+/* Directory Setup & Resolver Log                                      */
+/* ------------------------------------------------------------------ */
+
+.setup-panel {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 24px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: rgba(22, 28, 52, 0.82);
+  margin-top: 32px;
+}
+
+.setup-connected {
+  border-color: rgba(121, 217, 208, 0.28);
+}
+
+.setup-icon {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  font-size: 22px;
+  flex-shrink: 0;
+}
+
+.setup-connected .setup-icon {
+  color: #10201f;
+  background: var(--cyan);
+  font-weight: 900;
+}
+
+.setup-disconnected .setup-icon {
+  background: rgba(157, 124, 255, 0.12);
+}
+
+.setup-info {
+  flex: 1;
+}
+
+.setup-info h3 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 16px;
+  letter-spacing: -0.02em;
+}
+
+.setup-dir {
+  margin: 4px 0 0;
+  color: var(--cyan);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 13px;
+}
+
+.setup-hint {
+  margin: 4px 0 0;
+  color: #7f8ba6;
+  font-size: 12px;
+}
+
+.setup-status {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.log-panel {
+  margin-top: 20px;
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: rgba(14, 19, 39, 0.9);
+}
+
+.log-title {
+  margin: 0 0 14px;
+  color: var(--ink);
+  font-size: 14px;
+  letter-spacing: -0.02em;
+}
+
+.log-empty {
+  margin: 0;
+  color: #606c87;
+  font-size: 12px;
+}
+
+.log-entries {
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.log-entry {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(168, 180, 218, 0.06);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+}
+
+.log-entry:last-child {
+  border-bottom: none;
+}
+
+.log-time {
+  color: #606c87;
+  flex-shrink: 0;
+  width: 70px;
+}
+
+.log-file {
+  color: var(--muted-strong);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.log-resolved .log-status {
+  color: var(--cyan);
+}
+
+.log-error .log-status {
+  color: #fca5a5;
+}
