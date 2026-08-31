@@ -230,9 +230,10 @@ Indicador fijo en esquina inferior derecha:
 
 ### Pendiente para el Hackathon
 - [ ] Video demo de 3 minutos
-- [ ] Deploy (Vercel/Netlify)
-- [ ] Actualizar SUBMISSION.md con URLs reales
+- [x] Deploy público en Vercel: https://magic-picker.vercel.app
+- [x] Actualizar SUBMISSION.md con URL real
 - [ ] Testear con WebMCP real (Chrome 149+ / ChatGPT browser)
+- [ ] Grabar y pegar URL del video público de YouTube
 
 ---
 

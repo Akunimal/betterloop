@@ -7,8 +7,8 @@
 ## 🔗 Links
 
 - **Repository:** https://github.com/Akunimal/magicpicker
-- **Live Demo:** [Vercel URL — publish after deployment]
-- **Video Demo:** [YouTube URL — record after the public demo is live]
+- **Live Demo:** https://magic-picker.vercel.app
+- **Video Demo:** [YouTube URL — record using VIDEO_SCRIPT.md]
 
 The repository is public and includes the MIT `LICENSE` file. The video should be public on YouTube, shorter than three minutes, include audio, and show the live app working plus how WebMCP is used.
 

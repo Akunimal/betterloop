@@ -2,6 +2,9 @@
 
 Magic Picker is a focused human-handoff tool for browser agents. It lets an agent ask the user for a file through a page-owned UI, so the agent never has to operate a native file dialog itself.
 
+**Live demo:** https://magic-picker.vercel.app  
+**Agent quickstart:** https://magic-picker.vercel.app/agent-demo.html
+
 ## 🎯 The Problem
 
 AI agents running in sandboxed browsers **cannot interact with native OS dialogs** like file pickers. This is a fundamental security limitation of web browsers. Computer use agents cannot simulate these dialogs because they run outside the browser context.
