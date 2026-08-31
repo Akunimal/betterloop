@@ -1,18 +1,24 @@
 {
   "manifest_version": 3,
-  "name": "Magic Picker — File Resolver",
+  "name": "MagicPicker — Cross-tab file handoff",
   "version": "1.0.0",
-  "description": "Intercepts file inputs and resolves them via WebMCP magic_picker tool.",
-  "permissions": ["activeTab", "storage"],
-  "host_permissions": ["<all_urls>"],
+  "description": "Lets WebMCP agents prepare an exact local file for an HTML upload without opening a native picker.",
+  "permissions": ["tabs", "storage"],
+  "host_permissions": ["<all_urls>", "http://127.0.0.1:8765/*", "http://localhost:8765/*"],
   "background": {
     "service_worker": "background.js"
   },
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["interceptor.js"],
-      "run_at": "document_idle"
+      "js": ["content.js"],
+      "run_at": "document_start"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["agent.js"],
+      "matches": ["<all_urls>"]
     }
   ]
 }

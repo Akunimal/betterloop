@@ -2,92 +2,96 @@
 
 ## Links
 
-- **Repository:** https://github.com/Akunimal/magicpicker
-- **Live demo:** https://magic-picker.vercel.app
-- **Video:** [YouTube URL]
+- Repository: https://github.com/Akunimal/magicpicker
+- Live public demo: https://magic-picker.vercel.app
+- Video: `[add public video URL before submitting]`
 
-## Problem
+## One-line pitch
 
-AI agents in browsers can't operate native file dialogs. When a workflow needs a file, the agent stalls or the user intervenes manually with screenshots and copy-paste.
+MagicPicker gives browser agents an explicit file handoff: the agent passes the exact path the user requested, and MagicPicker resolves it without breaking the flow on a native picker.
 
-## Solution
+## The problem
 
-MagicPicker is a WebMCP file resolver. Codex passes a file path → MagicPicker reads it from the project directory → agent continues. No picker, no modal, no break.
+Browser agents operate in the web page, but native OS file dialogs sit outside the DOM. When an upload requires a file, the agent can stall, lose context, or force the user to take over.
 
-### How it works
+## The solution
 
-1. Codex discovers `magic_picker` via WebMCP auto-discovery
-2. User grants directory access once (one-time browser dialog)
-3. Codex calls `magic_picker({path: "src/App.tsx"})`
-4. MagicPicker reads the file and returns base64
-5. Agent continues without interruption
+MagicPicker has a public WebMCP mode and an optional local Chromium bridge with one-click, temporary activation:
 
-### Before / After
+1. The public page registers `magic_picker_read` through `navigator.modelContext.registerTool()`.
+2. The user clicks **Activate MagicPicker — full browser access** to start a visible, temporary session.
+3. The agent passes the exact path instead of asking the app to guess a file.
+4. In local bridge mode, `magic_picker_attach` prepares that file for the current tab.
+5. The extension intercepts only the next matching prepared file-input click, injects a `File`, and dispatches normal `input`/`change` events.
+6. A heartbeat ties the session to the open control page; closing it clears pending work and restores normal browser behavior.
 
-- **Before:** Agent hits native file dialog → workflow stalls → user intervenes
-- **After:** Agent calls `magic_picker` → file resolves automatically → workflow continues
+Normal user clicks are untouched. This MVP intentionally does not claim to control arbitrary OS dialogs, Google OAuth popups, or terminal prompts.
+
+The hosted submission demonstrates the page-scoped WebMCP flow in ChatGPT's built-in browser. The MV3 extension and temporary-session protocol are included as the local Chromium bridge. We studied an on-demand Codex/Chromium launcher or managed-extension handoff that could load the extension after explicit consent; it is feasible, but not implemented in this submission, and a webpage cannot perform that browser-level installation by itself.
 
 ## Why WebMCP
 
-WebMCP is the contract between page and agent: the page registers a tool (`magic_picker`), the agent invokes it by name, and the page resolves the file. No extensions needed, no native dialogs, no flow break.
+WebMCP is the agent-facing contract. The site exposes a meaningful capability with a schema and description instead of relying on DOM scraping or a hidden automation protocol. The local extension complements that contract for cross-tab upload delivery in a Chromium instance where it is explicitly loaded.
 
-## Technical implementation
+## WebMCP contract
 
 ```javascript
 navigator.modelContext.registerTool({
-  name: "magic_picker",
-  description: "Read files from the project directory. Pass the file path.",
+  name: 'magic_picker_read',
+  title: 'Read an exact local file',
   inputSchema: {
-    type: "object",
+    type: 'object',
     properties: {
-      path: { type: "string", description: "File path, e.g. src/App.tsx" },
-      projectDir: { type: "string", description: "Project root path (first call)" }
-    }
+      path: { type: 'string', description: 'Exact requested file path' },
+      accept: { type: 'string' },
+      maxSizeMB: { type: 'number' }
+    },
+    required: ['path']
   },
-  execute: async (input) => {
-    // File System Access API → read file → return base64
-  }
+  execute: async ({ path }) => resolveFromConnectedDirectory(path)
 });
 ```
 
-### Key features
+The extension adds `magic_picker_attach` on target pages. It routes requests by `tabId` and `requestId`, prefers `devin/filesystem.read_file` through the local MCP gateway, and falls back to the visible control page's authorized handle.
 
-- **Auto-discovery** — WebMCP registers silently, agents find it automatically
-- **One-time grant** — File System Access API, persisted via IndexedDB
-- **Direct path resolution** — Codex passes path, MagicPicker reads it
-- **Platform detection** — Works in ChatGPT Desktop, Chrome, Edge, Codex CLI
-- **Optional extension** — Intercepts `<input type="file">` on non-WebMCP sites
+## Technical highlights
 
-## Judging criteria
+- React + TypeScript + Vite frontend.
+- Native WebMCP registration with a local same-tab polyfill only for development.
+- File System Access API and IndexedDB handle persistence.
+- MV3 extension with MAIN-world WebMCP agent and isolated content router.
+- WebSocket gateway contract compatible with `I:\mcp-gateway-master`.
+- Exact-path resolution; no arbitrary first-file fallback after an explicit path fails.
+- Pending-file queue with accept/selector matching and 25 MB safety limit.
+- Public Vercel deployment plus source and extension ZIP.
 
-### WebMCP Leverage
-- Native `navigator.modelContext.registerTool()` — no polyfill in production
-- Proper input schema with path and projectDir parameters
-- Async execution with automatic resolution
+## Judge demo
 
-### Execution
-- Complete React + TypeScript implementation
-- Deployed to Vercel, working live demo
-- File System Access API + IndexedDB persistence
+### Public mode
 
-### Potential Impact
-- **Before:** Impossible for browser agents to access files without stalling
-- **After:** Agents resolve files automatically from the project directory
-- **Use cases:** Code analysis, document review, image processing, data import
+Open the live page in a WebMCP-enabled browser, click **Activate MagicPicker**, optionally click **Select project directory** for the FSA fallback, choose a small demo project, and ask the agent to read `src/App.tsx` or `package.json`.
 
-### Creativity & Ambition
-- File resolver, not file picker — the agent never loses the thread
-- Codex-driven flow — tool tells agent what to ask
-- Multi-platform: ChatGPT Desktop, Chrome, Edge, Codex CLI
-- Optional extension for non-WebMCP sites
+### Cross-tab mode
 
-## Video script (2:30)
+Launch Chromium with the unpacked extension, open the MagicPicker page, click **Activate MagicPicker**, then open an upload page. Grant the directory only if the gateway fallback is unavailable. Ask the agent to call:
 
-0:00–0:25 — Problem: browser agents hit a wall with file dialogs
-0:25–1:15 — Demo: Codex requests file, MagicPicker resolves, agent continues
-1:15–1:55 — Technical: WebMCP registration, File System Access API, path resolution
-1:55–2:25 — Persistence: IndexedDB, one-time grant, platform support
-2:25–2:50 — Close: URL, repo, impact
+```json
+{
+  "path": "C:\\demo\\assets\\logo.png",
+  "accept": "image/*"
+}
+```
+
+After the tool returns “File prepared”, click the target upload input. The file is assigned without a native dialog. A separate unprepared click should still open the normal picker.
+
+## Criteria mapping
+
+- WebMCP leverage: native `registerTool`, explicit schemas, agent-readable descriptions, and a page-scoped activation status tool.
+- Execution: live Vite/Vercel page, persistent user permission, deterministic path resolver.
+- Impact: prevents a common agent dead-end and preserves human control for ordinary clicks.
+- Creativity: a small, defensible handoff protocol that can grow to other user interactions.
+
+The page makes the broad browser scope explicit to the user. It does not claim silent full-computer access: the extension must already be loaded in the supported Chromium session, and Codex retains its own local-command approvals.
 
 ## License
 

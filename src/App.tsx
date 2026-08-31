@@ -1,6 +1,8 @@
 import { StatusBar } from './components/StatusBar';
 import { DirectorySetup } from './components/DirectorySetup';
 import { ResolverLog } from './components/ResolverLog';
+import { BridgeStatus } from './components/BridgeStatus';
+import { ActivationPanel } from './components/ActivationPanel';
 import './styles.css';
 
 function App() {
@@ -8,11 +10,13 @@ function App() {
     <div className="app">
       <header>
         <span className="logo"><span className="logo-icon">✦</span> MagicPicker</span>
-        <span className="tagline">WebMCP file resolver</span>
+        <span className="tagline">WebMCP + local handoff</span>
       </header>
 
       <main>
+        <ActivationPanel />
         <DirectorySetup />
+        <BridgeStatus />
         <ResolverLog />
       </main>
 

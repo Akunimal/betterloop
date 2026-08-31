@@ -1,64 +1,58 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <meta name="description" content="WebMCP quickstart for Magic Picker, a file resolver for browser agents." />
-    <title>Magic Picker — WebMCP Agent Demo</title>
+    <meta charset="UTF-8" />
+    <meta name="description" content="WebMCP quickstart for MagicPicker, a deterministic file handoff for browser agents." />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>MagicPicker — Agent Demo</title>
     <style>
-        body { font-family: Arial, sans-serif; max-width: 800px; margin: 40px auto; padding: 20px; }
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 40px auto; padding: 20px; color: #172033; }
         .demo-box { background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 8px; padding: 20px; margin: 20px 0; }
         code { background: #1e293b; color: #e2e8f0; padding: 2px 6px; border-radius: 4px; }
         pre { background: #1e293b; color: #e2e8f0; padding: 16px; border-radius: 8px; overflow-x: auto; }
+        a { color: #2563eb; }
     </style>
 </head>
 <body>
-    <h1>🪄 Magic Picker — Agent Demo</h1>
+    <h1>🪄 MagicPicker — Agent Demo</h1>
 
     <div class="demo-box">
-        <h2>For AI Agents</h2>
-        <p>Magic Picker is a <strong>file resolver</strong>, not a file picker. When you need a file, Magic Picker resolves it automatically from the user's project directory — no modal, no flow interruption.</p>
+        <h2>The capability</h2>
+        <p>MagicPicker is a file handoff, not a file picker. The agent passes the exact path the user requested. The page resolves it without opening a native dialog.</p>
     </div>
 
-    <h2>Available Tool</h2>
-    <pre>
-{
-  "name": "magic_picker",
-  "description": "Resolve a file from the user's project directory automatically",
-  "parameters": {
-    "accept": "image/*",
-    "multiple": false,
-    "maxSizeMB": 10,
-    "prompt": "src/App.tsx"
+    <h2>Public tool</h2>
+    <pre>{
+  "name": "magic_picker_read",
+  "description": "Read the exact local file path requested by the user",
+  "input": { "path": "src/App.tsx" }
+}</pre>
+
+    <h2>Local cross-tab tool</h2>
+    <pre>{
+  "name": "magic_picker_attach",
+  "description": "Prepare an exact file for an HTML upload in this tab",
+  "input": {
+    "path": "C:\\demo\\assets\\logo.png",
+    "accept": "image/*"
   }
-}
-    </pre>
-
-    <h2>Example Usage</h2>
-    <p>If you're ChatGPT, Claude, or another WebMCP-enabled agent, try:</p>
-    <pre>
-"Read the file src/App.tsx"
-"Find and analyze the config.json"
-"Get the image from assets/logo.png"
-    </pre>
-
-    <h2>Expected Result</h2>
-    <pre>
-{
-  "success": true,
-  "fileName": "App.tsx",
-  "fileSize": 12345,
-  "fileType": "text/typescript",
-  "base64Data": "aW1wb3J0IFJlYWN0..."
-}
-    </pre>
+}</pre>
+    <p>Call <code>magic_picker_attach</code> before clicking the target file input. The extension cancels only that prepared click. Normal clicks remain normal.</p>
 
     <div class="demo-box">
-        <h2>How It Works</h2>
-        <p>Magic Picker uses the File System Access API to maintain a persistent connection to the user's project directory. After the user grants access once, all subsequent agent requests resolve automatically. No modal appears. The agent keeps moving.</p>
+        <h2>One-click session</h2>
+        <p>Click <strong>Activate MagicPicker — full browser access</strong> to give explicit, temporary consent for the local browser bridge. The session ends when this control page closes, navigates away, or you deactivate it. The extension stays dormant outside that session.</p>
     </div>
 
     <div class="demo-box">
-        <h2>Setup</h2>
-        <p>Open <a href="https://magic-picker.vercel.app">magic-picker.vercel.app</a> and click "Select project directory". Once connected, any WebMCP-enabled agent can resolve files from that directory.</p>
+        <h2>Public setup</h2>
+        <p>Open <a href="https://magic-picker.vercel.app">magic-picker.vercel.app</a> and activate the temporary session. For the browser-only demo, optionally click <strong>Select project directory</strong> and grant access once. The public page uses WebMCP plus the File System Access API.</p>
+    </div>
+
+    <div class="demo-box">
+        <h2>Local setup</h2>
+        <p>For cross-tab uploads, launch the supported Chromium instance with the unpacked MV3 extension and keep the MagicPicker control page open in that same instance. A local MCP gateway can provide the preferred filesystem route; the control page is the browser-local fallback.</p>
+        <p><strong>Future integration studied:</strong> an on-demand Codex/Chromium launcher could load this extension after explicit consent and keep it only for the active session. This is feasible, but not implemented in the current build.</p>
     </div>
 </body>
 </html>

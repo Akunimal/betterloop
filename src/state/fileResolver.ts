@@ -6,10 +6,11 @@
  * it automatically without showing a modal.
  *
  * Flow:
- *   1. First request: ask user for directory permission (once)
- *   2. Store directory handle in IndexedDB for persistence
- *   3. Subsequent requests: resolve files automatically from the stored handle
- *   4. If file not found: try common locations and naming patterns
+ *   1. The user may connect a directory from the visible setup button.
+ *   2. Store the directory handle in IndexedDB for persistence.
+ *   3. Subsequent requests resolve files from the stored handle.
+ *   4. The WebMCP tool never opens a picker implicitly; agent calls are
+ *      deterministic and return an actionable error when setup is missing.
  */
 
 import { FileResult } from '../webmcp-types';
@@ -65,13 +66,12 @@ async function loadHandle(): Promise<FileSystemDirectoryHandle | null> {
 // Permission check
 // ------------------------------------------------------------------
 
-async function verifyPermission(handle: FileSystemDirectoryHandle): Promise<boolean> {
-  // Check if we already have permission
-  const opts = { mode: 'read' } as const;
-  if ((await handle.queryPermission(opts)) === 'granted') return true;
-  // Request permission (shows browser prompt if needed)
-  if ((await handle.requestPermission(opts)) === 'granted') return true;
-  return false;
+async function hasReadPermission(handle: FileSystemDirectoryHandle): Promise<boolean> {
+  try {
+    return (await handle.queryPermission({ mode: 'read' })) === 'granted';
+  } catch {
+    return false;
+  }
 }
 
 // ------------------------------------------------------------------
@@ -84,9 +84,10 @@ async function ensureDirectory(): Promise<FileSystemDirectoryHandle | null> {
     rootHandle = await loadHandle();
   }
 
-  // Verify permission is still valid
+  // Verify permission is still valid. Requesting permission here would be
+  // unreliable because browser permission prompts require user activation.
   if (rootHandle) {
-    if (await verifyPermission(rootHandle)) {
+    if (await hasReadPermission(rootHandle)) {
       return rootHandle;
     }
     rootHandle = null; // Permission revoked
@@ -116,10 +117,11 @@ export async function selectDirectory(): Promise<boolean> {
 export async function initResolver(): Promise<void> {
   if (initPromise) return initPromise;
   initPromise = (async () => {
-    rootHandle = await loadHandle();
-    if (rootHandle) {
-      const ok = await verifyPermission(rootHandle);
-      if (!ok) rootHandle = null;
+    try {
+      rootHandle = await loadHandle();
+      if (rootHandle && !(await hasReadPermission(rootHandle))) rootHandle = null;
+    } catch {
+      rootHandle = null;
     }
   })();
   return initPromise;
@@ -256,14 +258,10 @@ export async function resolveFile(options: ResolveOptions): Promise<FileResult> 
   const dir = await ensureDirectory();
 
   if (!dir) {
-    const granted = await selectDirectory();
-    if (!granted) {
-      return {
-        success: false,
-        error: 'No directory selected. Open MagicPicker and select a project directory first.'
-      };
-    }
-    return resolveFile(options);
+    return {
+      success: false,
+      error: 'No project directory connected. Open MagicPicker and use Connect project directory once.'
+    };
   }
 
   const accept = options.accept || '*';
@@ -271,7 +269,7 @@ export async function resolveFile(options: ResolveOptions): Promise<FileResult> 
   const path = options.path || '';
   const maxSizeBytes = (options.maxSizeMB || 10) * 1024 * 1024;
 
-  // Strategy 1: Direct path parameter (most common — Codex passes path directly)
+  // Strategy 1: Direct path parameter (most common — Codex passes path directly).
   if (path) {
     const normalized = path.replace(/\\/g, '/').replace(/^\//, '');
     const result = await tryReadFile(dir, normalized, maxSizeBytes);
@@ -284,7 +282,7 @@ export async function resolveFile(options: ResolveOptions): Promise<FileResult> 
     }
   }
 
-  // Strategy 2: Extract path from prompt text
+  // Strategy 2: Extract path from prompt text.
   if (prompt) {
     const directPath = extractPathFromPrompt(prompt);
     if (directPath) {
@@ -293,7 +291,17 @@ export async function resolveFile(options: ResolveOptions): Promise<FileResult> 
     }
   }
 
-  // Strategy 3: Search for matching files
+  // Never guess when the agent supplied an explicit path. Returning the first
+  // file in a project is unsafe and can silently upload the wrong asset.
+  if (path || directPathFromPrompt(prompt)) {
+    return {
+      success: false,
+      error: `File not found in the connected project: ${path || prompt}`
+    };
+  }
+
+  // Strategy 3: Search for matching files only when the request is explicitly
+  // a type/search request rather than an exact path.
   const candidates = await findFiles(dir, accept, prompt || path);
 
   if (candidates.length === 0) {
@@ -312,6 +320,10 @@ export async function resolveFile(options: ResolveOptions): Promise<FileResult> 
     success: false,
     error: `Found ${candidates.length} file(s) but could not read "${best}".`
   };
+}
+
+function directPathFromPrompt(prompt: string): string | null {
+  return prompt ? extractPathFromPrompt(prompt) : null;
 }
 
 function extractPathFromPrompt(prompt: string): string | null {
@@ -336,16 +348,23 @@ async function tryReadFile(
   path: string,
   maxSizeBytes: number
 ): Promise<FileResult | null> {
-  // Normalize: convert backslashes, strip drive letter (C:\), strip leading slashes
-  let normalized = path.replace(/\\/g, '/');
-  // Strip drive letter: C:/path → /path
-  normalized = normalized.replace(/^[A-Za-z]:/, '');
-  // Strip leading slashes
-  normalized = normalized.replace(/^\/+/, '');
+  // Normalize an exact path into a path relative to the connected directory.
+  // The browser intentionally does not expose the absolute path of a
+  // FileSystemDirectoryHandle, so an absolute path is accepted when it
+  // contains the connected directory name and is then made relative.
+  const original = path.replace(/\\/g, '/');
+  let normalized = original.replace(/^[A-Za-z]:/, '').replace(/^\/+/, '');
+  if (/^[A-Za-z]:\//.test(original) || original.startsWith('/')) {
+    const segments = normalized.split('/').filter(Boolean);
+    const rootName = (dir.name || '').toLowerCase();
+    const rootIndex = segments.findIndex((segment) => segment.toLowerCase() === rootName);
+    if (rootIndex >= 0) normalized = segments.slice(rootIndex + 1).join('/');
+  }
 
   if (!normalized) return null;
 
-  const parts = normalized.split('/');
+  const parts = normalized.split('/').filter((part) => part && part !== '.');
+  if (parts.some((part) => part === '..')) return null;
 
   const result = await readFileFromHandle(dir, parts);
   if (!result) return null;

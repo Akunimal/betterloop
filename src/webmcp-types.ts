@@ -31,12 +31,19 @@ export interface FileResult {
   fileSize?: number;
   fileType?: string;
   base64Data?: string;
+  content?: string;
   files?: PickedFile[];
   fileCount?: number;
+  queued?: boolean;
+  attached?: boolean;
+  requestId?: string;
+  instruction?: string;
+  provider?: 'gateway' | 'control-page' | 'public-page';
   error?: string;
 }
 
 export interface MagicPickerOptions {
+  path?: string;
   accept?: string;
   multiple?: boolean;
   maxSizeMB?: number;

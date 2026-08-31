@@ -70,6 +70,67 @@ header {
   font-size: 11px;
 }
 
+/* ---- Temporary activation ---- */
+.activation-card {
+  padding: 22px;
+  border: 1px solid rgba(157, 124, 255, 0.28);
+  border-radius: var(--radius);
+  background: linear-gradient(145deg, rgba(34, 29, 61, 0.9), var(--surface));
+  margin-bottom: 12px;
+}
+.activation-active { border-color: rgba(121, 217, 208, 0.34); }
+.activation-degraded { border-color: rgba(247, 189, 107, 0.34); }
+.activation-topline { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.activation-eyebrow {
+  color: var(--purple);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .12em;
+}
+.activation-active .activation-eyebrow { color: var(--cyan); }
+.activation-topline h2 { margin: 3px 0 0; font-size: 19px; letter-spacing: -0.02em; }
+.activation-badge {
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(157, 124, 255, 0.12);
+  color: var(--purple);
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+}
+.activation-active .activation-badge { background: rgba(121, 217, 208, 0.12); color: var(--cyan); }
+.activation-degraded .activation-badge { background: rgba(247, 189, 107, 0.12); color: var(--gold); }
+.activation-copy { margin: 12px 0 14px; color: #c8d0e3; font-size: 13px; line-height: 1.5; }
+.activation-disclosure {
+  display: grid;
+  gap: 5px;
+  margin-bottom: 14px;
+  padding: 11px 12px;
+  border: 1px solid rgba(168, 180, 218, 0.1);
+  border-radius: 9px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+.activation-status { margin: 0 0 14px; color: var(--muted); font-size: 11px; }
+.activation-btn {
+  width: 100%;
+  padding: 12px 16px;
+  border: 1px solid rgba(157, 124, 255, 0.46);
+  border-radius: 9px;
+  background: linear-gradient(135deg, rgba(157, 124, 255, 0.25), rgba(157, 124, 255, 0.1));
+  color: #efeaff;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: border-color 150ms, background 150ms, transform 150ms;
+}
+.activation-btn:hover { border-color: var(--purple); background: rgba(157, 124, 255, 0.25); transform: translateY(-1px); }
+.activation-btn-stop { border-color: rgba(252, 165, 165, 0.3); background: rgba(252, 165, 165, 0.08); color: #fca5a5; }
+.activation-btn-stop:hover { border-color: #fca5a5; background: rgba(252, 165, 165, 0.14); }
+.activation-footnote { margin: 12px 0 0; color: #68738b; font-size: 10px; line-height: 1.45; }
+
 /* ---- DirectorySetup ---- */
 .dir-card {
   padding: 20px;
@@ -137,6 +198,21 @@ header {
   transition: background 150ms;
 }
 .dir-btn:hover { background: rgba(157, 124, 255, 0.15); }
+
+/* ---- Local bridge ---- */
+.bridge-card {
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(20, 25, 40, 0.7);
+  margin-bottom: 12px;
+}
+.bridge-card-ready { border-color: rgba(121, 217, 208, 0.24); }
+.bridge-card-topline { display: flex; align-items: center; gap: 7px; font-size: 12px; }
+.bridge-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--gold); }
+.bridge-card-ready .bridge-dot { background: var(--cyan); box-shadow: 0 0 7px rgba(121, 217, 208, 0.55); }
+.bridge-badge { margin-left: auto; color: var(--muted); font-size: 9px; text-transform: uppercase; letter-spacing: .08em; }
+.bridge-card p { margin: 7px 0 0; color: var(--muted); font-size: 11px; line-height: 1.5; }
 
 /* ---- ResolverLog ---- */
 .log-panel {

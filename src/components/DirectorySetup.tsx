@@ -33,14 +33,14 @@ export const DirectorySetup: React.FC = () => {
             <span className="dir-connected-name">{dirName}</span>
             <span className="dir-connected-badge">ready</span>
           </div>
-          <p className="dir-hint">Agent passes file path → MagicPicker resolves automatically</p>
+          <p className="dir-hint">Optional FSA fallback ready → agent passes the exact path</p>
         </>
       ) : (
         <>
-          <h3>Connect your project directory</h3>
-          <p>One-time grant. After this, every agent call resolves files automatically.</p>
+          <h3>Optional: connect a project directory</h3>
+          <p>Useful for the browser-only demo when no local gateway is available. The bridge can otherwise use the exact path supplied by Codex.</p>
           <button className="dir-btn" onClick={handleConnect}>
-            📁 Select project directory
+            📁 Connect directory (optional)
           </button>
         </>
       )}
