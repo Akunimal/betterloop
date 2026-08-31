@@ -458,6 +458,60 @@ code {
   color: var(--muted);
 }
 
+/* ---- Install command ---- */
+.install-card {
+  margin-top: 16px;
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.install-card h3 {
+  margin: 0 0 6px;
+  font-size: 14px;
+  font-weight: 700;
+}
+.install-card > p {
+  margin: 0 0 12px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.install-code {
+  position: relative;
+  padding: 14px 16px;
+  border-radius: 8px;
+  background: #0b0e1a;
+  overflow-x: auto;
+}
+.install-code pre {
+  margin: 0;
+  padding-right: 70px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--cyan);
+  white-space: pre-wrap;
+}
+.install-copy {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  padding: 5px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 150ms;
+}
+.install-copy:hover {
+  background: var(--surface-hover);
+  color: var(--ink);
+}
+
 /* ---- Footer ---- */
 .footer {
   display: flex;

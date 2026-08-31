@@ -1,6 +1,7 @@
 import { StatusBar } from './components/StatusBar';
 import { DirectorySetup } from './components/DirectorySetup';
 import { ResolverLog } from './components/ResolverLog';
+import { InstallCommand } from './components/InstallCommand';
 import './styles.css';
 
 function App() {
@@ -97,6 +98,7 @@ function App() {
               </a>
             </div>
           </div>
+          <InstallCommand />
         </section>
 
         {/* Footer */}
