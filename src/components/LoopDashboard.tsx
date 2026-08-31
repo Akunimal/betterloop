@@ -295,6 +295,7 @@ export function LoopDashboard() {
           ))}
         </section>
 
+        <div className="activity-grid">
         <section className="run-section">
           <div className="section-heading"><div><span className="eyebrow">LIVE RUN</span><h2>Proof, pause, continue</h2></div><button className="text-button" type="button" onClick={clearRuns}>Clear log</button></div>
           <div className="run-card">
@@ -318,6 +319,7 @@ export function LoopDashboard() {
           <div className="section-heading"><div><span className="eyebrow">OBSERVABILITY</span><h2>What BetterLoop sees</h2></div><span className="tool-count">{toolNames.length} page tools · 10 host tools</span></div>
           <div className="log-card">{features.activityLog && viewRun ? <ActivityTimeline events={viewRun.events} /> : <p className="muted-copy">{features.activityLog ? 'Start a run to populate the visual log.' : 'Activity log is off.'}</p>}</div>
         </section>
+        </div>
 
         {message && <div className="toast" role="status">{message}</div>}
       </main>
