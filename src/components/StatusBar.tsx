@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { isMagicPickerRegistered, getRegistrationMode } from '../webmcp/magicPickerTool';
+import { isMagicPickerRegistered, getRegistrationMode, getDetectedPlatform } from '../webmcp/magicPickerTool';
 
 export const StatusBar: React.FC = () => {
   const [toolRegistered, setToolRegistered] = useState(false);
   const [mode, setMode] = useState('none');
+  const [platform, setPlatform] = useState('unknown');
 
   useEffect(() => {
     const updateStatus = () => {
       setToolRegistered(isMagicPickerRegistered());
       setMode(getRegistrationMode());
+      setPlatform(getDetectedPlatform());
     };
 
     updateStatus();
@@ -17,17 +19,34 @@ export const StatusBar: React.FC = () => {
   }, []);
 
   const modeLabel = mode === 'native'
-    ? 'WebMCP native (cross-tab)'
+    ? 'WebMCP active'
     : mode === 'polyfill'
-    ? 'polyfill (same-tab only)'
-    : 'not registered';
+    ? 'polyfill (testing)'
+    : 'waiting';
 
   return (
     <div className="status-bar" aria-label="WebMCP status">
-      <div>Tool: <strong>{toolRegistered ? 'registered' : 'pending'}</strong></div>
-      <div>WebMCP: <strong>{modeLabel}</strong></div>
+      <div className="status-row">
+        <span className="status-label">Tool</span>
+        <strong>{toolRegistered ? 'registered' : 'pending'}</strong>
+      </div>
+      <div className="status-row">
+        <span className="status-label">Platform</span>
+        <strong>{platform}</strong>
+      </div>
+      <div className="status-row">
+        <span className="status-label">WebMCP</span>
+        <strong className={mode === 'native' ? 'status-green' : ''}>{modeLabel}</strong>
+      </div>
       {mode === 'none' && (
-        <span className="status-mode">enable in chrome://flags/#web-mcp</span>
+        <a
+          className="status-hint"
+          href="https://chatgpt.com"
+          target="_blank"
+          rel="noreferrer"
+        >
+          Open in ChatGPT browser →
+        </a>
       )}
     </div>
   );

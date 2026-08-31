@@ -5,6 +5,7 @@ const TOOL_NAME = 'magic_picker';
 
 let registered = false;
 let registrationMode: 'native' | 'polyfill' | 'none' = 'none';
+let detectedPlatform: string = 'unknown';
 
 function formatSize(bytes: number): string {
   if (bytes < 1024) return `${bytes}B`;
@@ -12,14 +13,92 @@ function formatSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;
 }
 
+function detectPlatform(): string {
+  const ua = navigator.userAgent;
+  const w = window as any;
+
+  // ChatGPT desktop app (Electron-based)
+  if (w.electronAPI || ua.includes('Electron')) return 'ChatGPT Desktop';
+
+  // ChatGPT in-app browser
+  if (ua.includes('ChatGPT') || w.__NEXT_DATA__?.props?.pageProps?.isElectron) return 'ChatGPT Browser';
+
+  // Codex
+  if (ua.includes('Codex') || document.title.includes('Codex')) return 'Codex';
+
+  // Chrome with WebMCP
+  if (ua.includes('Chrome') && !ua.includes('Edg')) {
+    if ((navigator as any).modelContext) return 'Chrome (WebMCP)';
+    return 'Chrome';
+  }
+
+  // Edge
+  if (ua.includes('Edg')) return 'Edge';
+
+  // Firefox
+  if (ua.includes('Firefox')) return 'Firefox';
+
+  // Safari
+  if (ua.includes('Safari') && !ua.includes('Chrome')) return 'Safari';
+
+  return 'Browser';
+}
+
+function detectWebMCPStatus(): string {
+  const n = navigator as any;
+  const d = document as any;
+  const w = window as any;
+
+  if (n.modelContext) return 'native';
+  if (d.modelContext) return 'document';
+  if (w.modelContext) return 'polyfill';
+  return 'unavailable';
+}
+
 /**
- * Register magic_picker with the browser's native WebMCP API.
+ * Find the best available WebMCP context.
+ * Priority: navigator > document > window
+ */
+function findModelContext(): any {
+  const n = navigator as any;
+  const d = document as any;
+  const w = window as any;
+
+  // Check all known locations for modelContext
+  const candidates = [
+    { ctx: n.modelContext, name: 'navigator.modelContext' },
+    { ctx: d.modelContext, name: 'document.modelContext' },
+    { ctx: w.modelContext, name: 'window.modelContext' },
+  ];
+
+  for (const { ctx, name } of candidates) {
+    if (ctx && typeof ctx.registerTool === 'function') {
+      console.log(`🪄 Found WebMCP context at ${name}`);
+      return ctx;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Register magic_picker with the browser's WebMCP API.
  *
- * When the AI agent invokes this tool, it resolves files automatically
- * from the user's project directory without showing a picker modal.
+ * Supports:
+ *   - ChatGPT in-app browser (navigator.modelContext)
+ *   - Chrome with WebMCP enabled (navigator.modelContext)
+ *   - Chrome DevTools / Canary (document.modelContext)
+ *   - Local polyfill for testing (window.modelContext)
+ *
+ * The browser handles auto-discovery: agents visiting this page
+ * will automatically see magic_picker as an available tool.
  */
 export async function registerMagicPickerTool(): Promise<boolean> {
   if (registered) return true;
+
+  detectedPlatform = detectPlatform();
+  console.log(`🪄 Platform detected: ${detectedPlatform}`);
+  console.log(`🪄 WebMCP status: ${detectWebMCPStatus()}`);
 
   // Restore directory permission from IndexedDB
   await initResolver();
@@ -50,33 +129,26 @@ export async function registerMagicPickerTool(): Promise<boolean> {
     required: []
   };
 
-  /**
-   * Execute handler — resolves files automatically from the project directory.
-   * No modal, no user interruption. The AI gets the file and continues.
-   */
   const executeHandler = async (input: Record<string, unknown>): Promise<FileResult> => {
     const accept = typeof input.accept === 'string' && input.accept.trim() ? input.accept : '*';
     const multiple = input.multiple === true;
     const maxSizeMB = typeof input.maxSizeMB === 'number' && input.maxSizeMB > 0 ? input.maxSizeMB : 10;
     const prompt = typeof input.prompt === 'string' && input.prompt.trim() ? input.prompt : '';
 
-    console.log('🪄 Magic Picker resolving:', { accept, prompt });
+    console.log(`🪄 [${detectedPlatform}] Magic Picker resolving:`, { accept, prompt });
 
     const emitEvent = (detail: Record<string, unknown>) => {
       window.dispatchEvent(new CustomEvent('magic-picker:resolve', { detail }));
     };
 
-    // Emit "resolving" status immediately
     emitEvent({
       file: prompt || accept || 'searching...',
       path: prompt,
       status: 'resolving'
     });
 
-    // Resolve file(s) automatically — no modal
     const result = await resolveFile({ accept, multiple, maxSizeMB, prompt });
 
-    // Emit final result
     emitEvent({
       file: result.fileName || prompt || 'unknown',
       path: prompt,
@@ -89,14 +161,15 @@ export async function registerMagicPickerTool(): Promise<boolean> {
     return result;
   };
 
-  // --- Strategy 1: Native WebMCP (navigator.modelContext) ---
-  const nativeCtx = (navigator as any).modelContext;
-  if (nativeCtx && typeof nativeCtx.registerTool === 'function') {
+  // Find the best available WebMCP context
+  const modelContext = findModelContext();
+
+  if (modelContext) {
     try {
-      nativeCtx.registerTool({
+      modelContext.registerTool({
         name: TOOL_NAME,
-        title: 'Request a file from the project directory',
-        description: 'Resolve a file from the user\'s project directory. Returns file metadata and base64 data automatically without showing a picker.',
+        title: 'Request a file from the user',
+        description: 'Ask the user to choose a file in the page UI and return metadata plus base64 data.',
         annotations: {
           readOnlyHint: true,
           untrustedContentHint: true
@@ -107,41 +180,18 @@ export async function registerMagicPickerTool(): Promise<boolean> {
       registered = true;
       registrationMode = 'native';
       window.dispatchEvent(new Event('magic-picker:registered'));
-      console.log('✅ Magic Picker registered via native WebMCP (cross-tab)');
-      console.log('   Project directory:', getDirectoryName() || 'not set');
+      console.log(`✅ Magic Picker registered on ${detectedPlatform} via WebMCP`);
+      console.log(`   Directory: ${getDirectoryName() || 'not connected'}`);
+      console.log(`   Auto-discovery: agents will see magic_picker automatically`);
       return true;
     } catch (error) {
-      console.warn('🪄 Native WebMCP registration failed, trying polyfill...', error);
+      console.error('❌ Registration failed:', error);
     }
   }
 
-  // --- Strategy 2: Local polyfill (window.modelContext) ---
-  const polyfillCtx = (window as any).modelContext;
-  if (polyfillCtx && typeof polyfillCtx.registerTool === 'function') {
-    try {
-      polyfillCtx.registerTool({
-        name: TOOL_NAME,
-        title: 'Request a file from the project directory',
-        description: 'Resolve a file from the user\'s project directory. Returns file metadata and base64 data automatically without showing a picker.',
-        annotations: {
-          readOnlyHint: true,
-          untrustedContentHint: true
-        },
-        inputSchema,
-        execute: executeHandler
-      });
-      registered = true;
-      registrationMode = 'polyfill';
-      window.dispatchEvent(new Event('magic-picker:registered'));
-      console.log('✅ Magic Picker registered via local polyfill (same-tab only)');
-      console.log('   Project directory:', getDirectoryName() || 'not set');
-      return true;
-    } catch (error) {
-      console.error('❌ Magic Picker registration failed:', error);
-    }
-  }
-
-  console.warn('🪄 Magic Picker: No WebMCP transport available');
+  console.warn('🪄 No WebMCP context found');
+  console.warn('   Enable WebMCP: chrome://flags/#enable-webmcp-testing');
+  console.warn('   Or use ChatGPT desktop app with in-app browser');
   return false;
 }
 
@@ -155,6 +205,10 @@ export function isCrossTabCapable(): boolean {
 
 export function getRegistrationMode(): string {
   return registrationMode;
+}
+
+export function getDetectedPlatform(): string {
+  return detectedPlatform;
 }
 
 export { hasDirectoryPermission, getDirectoryName, selectDirectory };

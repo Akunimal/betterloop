@@ -1044,14 +1044,35 @@ code {
   backdrop-filter: blur(10px);
 }
 
+.status-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.status-label {
+  color: #606c87;
+}
+
 .status-bar strong {
   color: var(--cyan);
   font-weight: 800;
 }
 
-.status-bar .status-mode {
+.status-green {
+  color: #22c55e !important;
+}
+
+.status-hint {
   display: block;
-  color: #7f8ba6;
+  margin-top: 6px;
+  color: var(--purple);
+  text-decoration: none;
+  font-size: 9px;
+}
+
+.status-hint:hover {
+  color: var(--purple-strong);
 }
 
 @media (max-width: 900px) {
