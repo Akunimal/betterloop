@@ -52,10 +52,11 @@ function findModelContext(): any {
 }
 
 /**
- * Register magic_picker — resolves files from the connected directory.
+ * Register magic_picker tool.
  *
- * After the one-time directory grant, every call resolves automatically.
- * Codex passes a file path, MagicPicker reads it. No picker, no modal.
+ * Auto-discovery: Codex sees this tool automatically via WebMCP.
+ * The tool tells Codex to connect the directory once, then all
+ * subsequent calls resolve files instantly.
  */
 export async function registerMagicPickerTool(): Promise<boolean> {
   if (registered) return true;
@@ -70,16 +71,11 @@ export async function registerMagicPickerTool(): Promise<boolean> {
     properties: {
       path: {
         type: 'string',
-        description: 'File path to resolve, e.g. "src/App.tsx" or "package.json".'
+        description: 'File path relative to the project root, e.g. "src/App.tsx".'
       },
-      accept: {
+      projectDir: {
         type: 'string',
-        description: 'MIME type filter, e.g. "image/*" or ".pdf". Default: "*".',
-        default: '*'
-      },
-      prompt: {
-        type: 'string',
-        description: 'Fallback: describe what file is needed if no path is given.'
+        description: 'Absolute path to the project directory. Required on first call to connect. e.g. "C:\\Users\\user\\myproject" or "/home/user/myproject". Subsequent calls can omit this.'
       }
     },
     required: []
@@ -87,25 +83,45 @@ export async function registerMagicPickerTool(): Promise<boolean> {
 
   const executeHandler = async (input: Record<string, unknown>): Promise<FileResult> => {
     const path = typeof input.path === 'string' ? input.path.trim() : '';
-    const accept = typeof input.accept === 'string' ? input.accept.trim() : '*';
-    const prompt = typeof input.prompt === 'string' ? input.prompt.trim() : '';
+    const projectDir = typeof input.projectDir === 'string' ? input.projectDir.trim() : '';
 
-    // Use path as the primary resolution target, fallback to prompt
-    const searchTarget = path || prompt;
+    // If projectDir provided and not connected, trigger directory picker
+    // The user will see a one-time browser dialog to grant access
+    if (projectDir && !hasDirectoryPermission()) {
+      console.log(`🪄 First call — connecting to project: ${projectDir}`);
+      // We still need the browser's native picker for the one-time grant
+      // but we tell the user exactly what to do
+      const granted = await selectDirectory();
+      if (!granted) {
+        return {
+          success: false,
+          error: 'Directory access required. Please select your project folder once — after this, all files resolve automatically.'
+        };
+      }
+    }
 
-    console.log(`🪄 [${detectedPlatform}] Resolving:`, searchTarget || accept);
+    if (!hasDirectoryPermission()) {
+      return {
+        success: false,
+        error: 'No project directory connected. Ask the user to select their project folder on the MagicPicker page.'
+      };
+    }
+
+    const searchTarget = path || '';
+
+    console.log(`🪄 [${detectedPlatform}] Resolving:`, searchTarget);
 
     const emitEvent = (detail: Record<string, unknown>) => {
       window.dispatchEvent(new CustomEvent('magic-picker:resolve', { detail }));
     };
 
     emitEvent({
-      file: searchTarget || accept || 'searching...',
+      file: searchTarget || 'searching...',
       path: searchTarget,
       status: 'resolving'
     });
 
-    const result = await resolveFile({ accept, multiple: false, maxSizeMB: 50, prompt: searchTarget });
+    const result = await resolveFile({ path: searchTarget, maxSizeMB: 50 });
 
     emitEvent({
       file: result.fileName || searchTarget || 'unknown',
@@ -125,8 +141,19 @@ export async function registerMagicPickerTool(): Promise<boolean> {
     try {
       modelContext.registerTool({
         name: TOOL_NAME,
-        title: 'Resolve a file from the project',
-        description: 'Read a file from the user\'s connected project directory. Pass the file path (e.g. "src/App.tsx"). Returns file data as base64. No picker dialog.',
+        title: 'Resolve files from the project directory',
+        description: [
+          'Read files from the user\'s project directory without opening a native file picker.',
+          '',
+          'First call: ask the user for their project directory path, then pass it as projectDir.',
+          'The user will see a one-time browser dialog to grant access.',
+          'After that, just pass the file path — no more prompts.',
+          '',
+          'Examples:',
+          '- First call: magic_picker({ projectDir: "C:\\\\Users\\\\user\\\\myproject" })',
+          '- Read file: magic_picker({ path: "src/App.tsx" })',
+          '- Read file: magic_picker({ path: "package.json" })',
+        ].join('\n'),
         annotations: {
           readOnlyHint: true,
           untrustedContentHint: true
@@ -137,7 +164,7 @@ export async function registerMagicPickerTool(): Promise<boolean> {
       registered = true;
       registrationMode = 'native';
       window.dispatchEvent(new Event('magic-picker:registered'));
-      console.log(`✅ magic_picker registered | Dir: ${getDirectoryName() || 'connect once'}`);
+      console.log(`✅ magic_picker registered | Dir: ${getDirectoryName() || 'connect on first call'}`);
       return true;
     } catch (error) {
       console.error('❌ Registration failed:', error);

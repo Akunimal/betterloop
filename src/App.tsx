@@ -55,21 +55,21 @@ function App() {
           <div className="how-grid">
             <div className="how-card">
               <div className="how-icon">📡</div>
-              <h3>WebMCP auto-discovery</h3>
-              <p>MagicPicker registers a <code>magic_picker</code> tool via WebMCP.
-                Any agent in the browser discovers it automatically — no install needed.</p>
+              <h3>Auto-discovery</h3>
+              <p>MagicPicker registers <code>magic_picker</code> via WebMCP.
+                Codex discovers it automatically — zero setup.</p>
             </div>
             <div className="how-card">
-              <div className="how-icon">📁</div>
-              <h3>File System Access API</h3>
-              <p>You grant access once. MagicPicker reads from your project directory
-                using persistent browser permissions — no repeated prompts.</p>
+              <div className="how-icon">🤝</div>
+              <h3>Codex asks, user grants once</h3>
+              <p>Codex asks for the project path. User clicks "Allow" in the browser dialog.
+                One time. After that, fully automatic.</p>
             </div>
             <div className="how-card">
-              <div className="how-icon">🔍</div>
-              <h3>Smart resolution</h3>
-              <p>Path detection, directory search, pattern matching — the agent asks,
-                the resolver answers. No native OS dialog ever opens.</p>
+              <div className="how-icon">⚡</div>
+              <h3>Instant resolution</h3>
+              <p>Codex passes <code>path: "src/App.tsx"</code> → MagicPicker reads it.
+                No modal, no picker, no interruption.</p>
             </div>
           </div>
         </section>
