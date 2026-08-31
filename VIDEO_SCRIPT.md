@@ -10,6 +10,10 @@ Open BetterLoop in Codex’s built-in browser. Press Turn BetterLoop ON.
 
 “This one visible action is the consent boundary. BetterLoop now registers its WebMCP continuity tools for this page.”
 
+Point at the warning banner:
+
+“The page is live, but automatic Codex continuation is explicitly marked not ready until the project hook is trusted and loaded. If Codex asks for it, I restart or reopen the session. The web page never pretends it can install that host hook itself.”
+
 ## 0:20 — The control surface
 
 Show the compact grouped controls:
@@ -39,7 +43,7 @@ Press Mark 100% done.
 
 Show .codex/hooks.json and scripts/betterloop-stop.cjs.
 
-“The optional Stop hook asks Codex: Is the job 100% done? If Auto-continue is on and Codex trusts the hook, its supported block decision creates a continuation prompt. If the hook is not trusted, the page still works as a WebMCP dashboard and clearly tells the user what is missing.”
+“The optional Stop hook asks Codex: Is the job 100% done? If Auto-continue is on and Codex trusts the hook, its supported block decision creates a continuation prompt. Until then, the page remains a WebMCP dashboard and clearly tells the user that Codex must load the hook first.”
 
 ## 1:05 — Close
 

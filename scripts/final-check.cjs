@@ -69,6 +69,7 @@ const tools = fs.readFileSync(path.join(root, 'src/webmcp/betterLoopTools.ts'), 
 const hook = fs.readFileSync(path.join(root, 'scripts/betterloop-stop.cjs'), 'utf8')
 const hookConfig = JSON.parse(fs.readFileSync(path.join(root, '.codex/hooks.json'), 'utf8'))
 const index = fs.readFileSync(path.join(root, 'index.html'), 'utf8')
+const dashboard = fs.readFileSync(path.join(root, 'src/components/LoopDashboard.tsx'), 'utf8')
 
 for (const tool of [
   'betterloop_start',
@@ -90,6 +91,7 @@ check('research-first guard', types.includes('researchBeforeBlocking') && tools.
 check('Stop hook loop guard', hook.includes('stop_hook_active') && hook.includes("decision: 'block'"))
 check('Stop hook config shape', Array.isArray(hookConfig.hooks?.Stop) && hookConfig.hooks.Stop[0]?.hooks?.[0]?.type === 'command')
 check('BetterLoop metadata', index.includes('betterloop-control') && index.includes('<title>BetterLoop'))
+check('hook readiness banner', dashboard.includes('NOT READY') && dashboard.includes('restart or reopen Codex') && dashboard.includes('page cannot load the hook by itself'))
 
 const activePaths = [
   'README.md',

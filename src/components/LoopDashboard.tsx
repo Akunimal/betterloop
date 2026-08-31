@@ -209,12 +209,17 @@ export function LoopDashboard() {
         <section className="integration-strip">
           <div><span className="strip-label">WebMCP</span><strong>{registered ? 'Tools registered' : 'Waiting for activation'}</strong></div>
           <div><span className="strip-label">Mode</span><strong>{mode === 'polyfill' ? 'Local demo bridge' : mode === 'native' ? 'Native site tools' : 'Unavailable'}</strong></div>
-          <div><span className="strip-label">Codex hook</span><strong>Optional / trust required</strong></div>
+          <div><span className="strip-label">Codex hook</span><strong>{enabled ? 'Not ready / restart Codex' : 'Waiting for activation'}</strong></div>
         </section>
 
-        <section className="notice-card">
-          <span className="notice-icon">i</span>
-          <div><strong>One-click activation, host-level continuation.</strong><p>After the ON click, the page exposes WebMCP tools for this session. The optional project Stop hook asks “Is the job 100% done?” and can auto-continue after Codex trusts the hook; a restart may be recommended by Codex.</p></div>
+        <section className={'notice-card hook-banner ' + (enabled ? 'is-pending' : 'is-idle')} role={enabled ? 'alert' : undefined}>
+          <span className="notice-icon">{enabled ? '!' : 'i'}</span>
+          <div>
+            <strong>{enabled ? 'NOT READY: Codex still needs to load the BetterLoop hook.' : 'One-click activation, host-level continuation.'}</strong>
+            <p>{enabled
+              ? 'WebMCP is active on this page, but automatic “Continue” and the “Is the job 100% done?” check will not run until Codex trusts the project hook. Review the hook, then restart or reopen Codex so the change is loaded. The page cannot load the hook by itself.'
+              : 'After the ON click, the page exposes WebMCP tools for this session. The project Stop hook asks “Is the job 100% done?” and can request the next Codex turn after it is trusted and loaded.'}</p>
+          </div>
         </section>
 
         <div className="section-heading"><div><span className="eyebrow">CONTROL PLANE</span><h2>Choose the loop behavior</h2></div><span className="feature-count">{activeFeatureCount}/{Object.keys(features).length} active</span></div>

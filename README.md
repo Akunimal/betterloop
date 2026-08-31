@@ -17,7 +17,7 @@ The user opens BetterLoop in Codex’s built-in browser and presses one visible 
 - betterloop_finish — close the run only after verification passes.
 - betterloop_status — expose the current state and selected features.
 
-The dashboard makes the loop visible: active features, current phase, verification criteria, quota countdown, and a local event timeline.
+The dashboard makes the loop visible: active features, current phase, verification criteria, quota countdown, and a local event timeline. After activation it also shows a clear `NOT READY` banner until the host hook has been trusted and loaded; the user is told to restart or reopen Codex when required.
 
 ## The final 100% check
 
@@ -50,7 +50,7 @@ This is deliberately a conservative heuristic, not a claim that every model or a
 
 The page uses document.modelContext.registerTool, the WebMCP site-tool contract. In a WebMCP-capable Codex browser, the tools are discoverable after the user visits the page and activates it. Outside that environment, the app keeps a local polyfill so the public demo remains interactive and testable.
 
-The optional Stop hook is a host-side Codex integration. A webpage cannot silently install a hook, change Codex approval policy, or wake a closed Codex session. Project hooks require Codex trust review and may require opening a new session or restarting the current one. This boundary is intentional and is shown in the UI.
+The optional Stop hook is a host-side Codex integration. A webpage cannot silently install a hook, change Codex approval policy, or wake a closed Codex session. Project hooks require Codex trust review and may require opening a new session or restarting the current one. After the page is activated, BetterLoop explicitly marks automatic continuation as `NOT READY` until that host step is complete; this boundary is intentional and visible in the UI.
 
 Official references:
 

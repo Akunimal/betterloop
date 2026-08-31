@@ -12,13 +12,14 @@ Agentic work often stops at the wrong boundary. A response can end while tests a
 
 1. Open the public page in Codex’s built-in browser.
 2. Press Turn BetterLoop ON. This is the only activation required for the page tools.
-3. Show the compact feature controls and turn on Auto-continue, 100% done, Quota recovery, and Research first.
-4. Start the guided demo.
-5. Show an evidence check that fails, then use the visible log to show the task staying open.
-6. Simulate a quota pause. BetterLoop records the five-hour recovery assumption without freezing the page.
-7. Mark quota available. BetterLoop resumes from the last checkpoint and plays the optional short sound.
-8. Mark the evidence complete. BetterLoop closes the run as 100% verified.
-9. In the repository, show .codex/hooks.json and scripts/betterloop-stop.cjs. The hook asks “Is the job 100% done?” at a Codex turn stop and can request another turn through the supported Stop hook contract.
+3. Point out the `NOT READY` banner: the page tools are live, but host-level continuation waits for Codex to trust/load the project hook and restart or reopen the session if requested.
+4. Show the compact feature controls and turn on Auto-continue, 100% done, Quota recovery, and Research first.
+5. Start the guided demo.
+6. Show an evidence check that fails, then use the visible log to show the task staying open.
+7. Simulate a quota pause. BetterLoop records the five-hour recovery assumption without freezing the page.
+8. Mark quota available. BetterLoop resumes from the last checkpoint and plays the optional short sound.
+9. Mark the evidence complete. BetterLoop closes the run as 100% verified.
+10. In the repository, show .codex/hooks.json and scripts/betterloop-stop.cjs. The hook asks “Is the job 100% done?” at a Codex turn stop and can request another turn through the supported Stop hook contract.
 
 ## WebMCP implementation
 

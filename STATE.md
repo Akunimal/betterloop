@@ -17,10 +17,11 @@ The app is a polished WebMCP demo for agent continuity. The old file-transfer pr
 - Optional browser sound alert unlocked by the activation gesture.
 - Local visual event timeline.
 - Project-local Codex Stop hook with stop_hook_active loop protection.
+- Explicit post-activation `NOT READY` banner that tells the user to trust/load the hook and restart or reopen Codex before relying on host-level continuation.
 
 ## Known boundary
 
-WebMCP gives a page a discoverable tool contract; the page does not get arbitrary control over Codex’s host process. The Stop hook is the supported route for synchronous turn continuation, but project hooks must be trusted by Codex and can require a new session. A web page cannot silently write Codex configuration, inspect private quota state, or wake a closed session.
+WebMCP gives a page a discoverable tool contract; the page does not get arbitrary control over Codex’s host process. The Stop hook is the supported route for synchronous turn continuation, but project hooks must be trusted by Codex and can require a new session. A web page cannot silently write Codex configuration, inspect private quota state, or wake a closed session. The dashboard therefore treats the hook as not ready after web activation and asks the user to trust it and restart/reopen Codex; it does not claim that the page can verify host hook state on its own.
 
 The next production step would be a small local host/App Server bridge that synchronizes the page’s activation state with the hook and receives real Codex lifecycle events. It is intentionally documented as a follow-up, not presented as implemented.
 
