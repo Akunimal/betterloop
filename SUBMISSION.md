@@ -1,116 +1,94 @@
-# Magic Picker — WebMCP Challenge Submission
+# MagicPicker — WebMCP Challenge Submission
 
-## 📋 Project Overview
-
-**Magic Picker** is a WebMCP file resolver for browser agents. When an AI agent needs a file, Magic Picker resolves it automatically from the user's project directory — no picker modal, no flow interruption.
-
-## 🔗 Links
+## Links
 
 - **Repository:** https://github.com/Akunimal/magicpicker
-- **Live Demo:** https://magic-picker.vercel.app
-- **Video Demo:** [YouTube URL — record using VIDEO_SCRIPT.md]
+- **Live demo:** https://magic-picker.vercel.app
+- **Video:** [YouTube URL]
 
-## 🎯 Problem Solved
+## Problem
 
-AI agents running in web browsers hit a wall when they need a file. The agent can't operate native OS file dialogs, so the workflow stalls — or the user has to manually intervene with screenshots, copy-paste, and context switching.
+AI agents in browsers can't operate native file dialogs. When a workflow needs a file, the agent stalls or the user intervenes manually with screenshots and copy-paste.
 
-## Why WebMCP is the right fit
+## Solution
 
-WebMCP is the contract between the page and the agent: the page advertises a precise action (`magic_picker`), the agent invokes it by name, and the page resolves the file automatically. No modal, no human interruption, no flow break.
+MagicPicker is a WebMCP file resolver. Codex passes a file path → MagicPicker reads it from the project directory → agent continues. No picker, no modal, no break.
 
-## Before and after
+### How it works
 
-- **Before:** The agent reaches a native file dialog it cannot operate. The workflow stalls, or the user has to manually provide the file.
-- **After:** The agent calls `magic_picker` with a file path or type. Magic Picker resolves it instantly from the project directory. The agent continues without interruption.
+1. Codex discovers `magic_picker` via WebMCP auto-discovery
+2. User grants directory access once (one-time browser dialog)
+3. Codex calls `magic_picker({path: "src/App.tsx"})`
+4. MagicPicker reads the file and returns base64
+5. Agent continues without interruption
 
-## 💡 Solution
+### Before / After
 
-Magic Picker provides a WebMCP file resolver that:
+- **Before:** Agent hits native file dialog → workflow stalls → user intervenes
+- **After:** Agent calls `magic_picker` → file resolves automatically → workflow continues
 
-1. **Grants once** — User selects their project directory one time
-2. **Resolves automatically** — When the agent requests a file, it's found and read instantly
-3. **Returns base64** — File data is returned directly to the agent
-4. **Persists access** — IndexedDB stores the directory handle between sessions
+## Why WebMCP
 
-The File System Access API maintains a persistent connection to the user's project directory. No modal appears. The agent keeps moving.
+WebMCP is the contract between page and agent: the page registers a tool (`magic_picker`), the agent invokes it by name, and the page resolves the file. No extensions needed, no native dialogs, no flow break.
 
-## 🛠️ Technical Implementation
-
-### WebMCP Tool Registration
+## Technical implementation
 
 ```javascript
-// Registers with navigator.modelContext (native WebMCP) or window.modelContext (polyfill)
 navigator.modelContext.registerTool({
   name: "magic_picker",
-  title: "Resolve a file from the project directory",
-  description: "Find and read a file automatically without showing a picker",
+  description: "Read files from the project directory. Pass the file path.",
   inputSchema: {
     type: "object",
     properties: {
-      accept: { type: "string" },
-      multiple: { type: "boolean" },
-      maxSizeMB: { type: "number" },
-      prompt: { type: "string", description: "File path or description" }
+      path: { type: "string", description: "File path, e.g. src/App.tsx" },
+      projectDir: { type: "string", description: "Project root path (first call)" }
     }
   },
   execute: async (input) => {
-    // Auto-resolve: path detection → file search → read → base64
+    // File System Access API → read file → return base64
   }
 });
 ```
 
-### Key Features
+### Key features
 
-- **Auto-resolve** — No modal, no user interruption
-- **Path detection** — Extracts file paths from agent prompts
-- **File search** — Walks directory tree matching accept patterns
-- **Persistent access** — IndexedDB stores directory handle
-- **WebMCP native** — Cross-tab routing via navigator.modelContext
+- **Auto-discovery** — WebMCP registers silently, agents find it automatically
+- **One-time grant** — File System Access API, persisted via IndexedDB
+- **Direct path resolution** — Codex passes path, MagicPicker reads it
+- **Platform detection** — Works in ChatGPT Desktop, Chrome, Edge, Codex CLI
+- **Optional extension** — Intercepts `<input type="file">` on non-WebMCP sites
 
-## 📊 Judging Criteria Alignment
+## Judging criteria
 
-### WebMCP Leverage ✅
-- Uses native WebMCP API (`navigator.modelContext.registerTool`)
-- Proper input schema with file type, size, and path parameters
+### WebMCP Leverage
+- Native `navigator.modelContext.registerTool()` — no polyfill in production
+- Proper input schema with path and projectDir parameters
 - Async execution with automatic resolution
-- Cross-tab routing via WebMCP native transport
 
-### Execution ✅
+### Execution
 - Complete React + TypeScript implementation
-- File System Access API integration
-- IndexedDB persistence
-- Build process for production
+- Deployed to Vercel, working live demo
+- File System Access API + IndexedDB persistence
 
-### Potential Impact ✅
+### Potential Impact
 - **Before:** Impossible for browser agents to access files without stalling
 - **After:** Agents resolve files automatically from the project directory
 - **Use cases:** Code analysis, document review, image processing, data import
 
-### Creativity & Ambition ✅
-- File resolver instead of file picker — the agent never loses the thread
-- Multi-strategy resolution: path detection, file search, recursive traversal
-- Persistent directory access without repeated user prompts
-- Native WebMCP for cross-tab agent communication
+### Creativity & Ambition
+- File resolver, not file picker — the agent never loses the thread
+- Codex-driven flow — tool tells agent what to ask
+- Multi-platform: ChatGPT Desktop, Chrome, Edge, Codex CLI
+- Optional extension for non-WebMCP sites
 
-## 🎥 Video Demo Script (3 minutes)
+## Video script (2:30)
 
-**0:00-0:30:** Problem — Browser agents can't access files without stalling the workflow
+0:00–0:25 — Problem: browser agents hit a wall with file dialogs
+0:25–1:15 — Demo: Codex requests file, MagicPicker resolves, agent continues
+1:15–1:55 — Technical: WebMCP registration, File System Access API, path resolution
+1:55–2:25 — Persistence: IndexedDB, one-time grant, platform support
+2:25–2:50 — Close: URL, repo, impact
 
-**0:30-1:30:** Demo — Show agent requesting a file, Magic Picker resolving it automatically, agent continuing
+## License
 
-**1:30-2:30:** Technical — Show File System Access API, path detection, WebMCP registration
-
-**2:30-3:00:** Impact — The agent-native web where files resolve themselves
-
-## 🚀 Setup Instructions
-
-1. Clone the repository
-2. Run `npm install`
-3. Run `npm run dev`
-4. Open http://localhost:3000
-5. Click **Select project directory** and choose your project folder
-6. For WebMCP testing: Open in Chrome with `chrome://flags/#web-mcp` enabled
-
-## 📄 License
-
-MIT License
+MIT
