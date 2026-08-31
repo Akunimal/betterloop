@@ -15,6 +15,48 @@
 
 ---
 
+## 🚨 Handoff para el próximo coder
+
+### Decisión importante
+
+La implementación actual **no resuelve el objetivo original de capturar pickers o popups de otras pestañas**. Es una demo válida de un handoff dentro de la propia página, pero no debe presentarse como un interceptor global del navegador.
+
+El usuario va a continuar la investigación/implementación con otro coder porque tiene una posible solución distinta. Antes de ampliar este repo, comparar esa solución con esta frontera técnica.
+
+### Problema original que sigue abierto
+
+Escenario esperado: el agente navega en una pestaña del navegador embebido, otra pestaña o proceso abre un file picker/popup, y el flujo del agente se corta o queda colgado. El usuario quiere que un componente central capture ese evento, preserve el uso normal del navegador y permita reanudar el agente.
+
+La página Vercel no puede hacer eso por sí sola:
+
+| Capa | Alcance real |
+| --- | --- |
+| Página Vercel / React | Solo su propio DOM, estado y WebMCP registrado en su `Document`. |
+| WebMCP | Página y árbol de iframes autorizados; no ofrece a una web acceso general a otras pestañas. |
+| Extensión de navegador | Puede observar pestañas e inyectar código con permisos de host; puede mediar APIs/DOM de páginas, pero no captura universalmente diálogos nativos del sistema. Puede no estar disponible dentro del navegador embebido de Codex. |
+| Integración Codex/ChatGPT | Es la capa correcta para pausar/reanudar el agente y coordinar pestañas, popups y diálogos del host. |
+| Companion desktop/local | Puede coordinar terminales y ventanas del sistema, con permisos explícitos y límites de seguridad. |
+
+`BroadcastChannel`, `postMessage` o un WebSocket solo coordinan páginas que cooperan; no convierten una página en un monitor global ni permiten leer arbitrariamente un popup cross-origin.
+
+### Dirección recomendada
+
+1. Validar primero la solución del otro coder y determinar dónde vive: extensión, host de Codex/ChatGPT o proceso local.
+2. Si necesita otras pestañas, mover el componente central fuera de la página Vercel.
+3. Mantener `magic_picker` como caso de prueba de handoff page-owned, no como solución global.
+4. No interceptar ni almacenar credenciales OAuth; para gcloud preferir `--no-launch-browser`, `--no-browser` o `--console-only`.
+5. Si no se puede demostrar el control cross-tab en el navegador objetivo, no prometerlo en el pitch ni en Devpost.
+
+### Fuentes técnicas consultadas
+
+- WebMCP draft: https://webmachinelearning.github.io/webmcp/
+- Chrome WebMCP: https://developer.chrome.com/docs/ai/webmcp/
+- WebMCP security and extension access: https://developer.chrome.com/docs/ai/webmcp/secure-tools
+- WebMCP imperative API / iframe boundary: https://developer.chrome.com/docs/ai/webmcp/imperative-api
+- gcloud auth flows: https://docs.cloud.google.com/sdk/gcloud/reference/auth/login
+
+---
+
 ## 🏗️ Arquitectura
 
 ```
@@ -25,8 +67,8 @@
                      │ WebMCP call
                      ▼
 ┌─────────────────────────────────────────────────┐
-│           window.modelContext                    │
-│          (WebMCP API / Polyfill)                 │
+│       document.modelContext                     │
+│       (window fallback / Polyfill)              │
 └────────────────────┬────────────────────────────┘
                      │ registerTool()
                      ▼
@@ -126,7 +168,7 @@ Estado global singleton con patrón pub/sub:
 - **Flujo:** `requestFile()` crea una Promise, guarda el resolver en estado, el modal la resuelve con `complete()`
 
 ### `src/webmcp/magicPickerTool.ts`
-Registra la tool `magic_picker` en `window.modelContext`:
+Registra la tool `magic_picker` en `document.modelContext`, con fallback a `window.modelContext`:
 
 - **Input Schema:** `accept` (string), `multiple` (boolean), `maxSizeMB` (number), `prompt` (string)
 - **Execute:** Llama a `pickerState.requestFile(options, signal)` y retorna el `FileResult`
@@ -147,7 +189,7 @@ Utilidades de manejo de archivos:
 | Función | Propósito |
 |---------|-----------|
 | `fileToBase64(file)` | Convierte File a string base64 (sin prefijo data:) |
-| `validateFile(file, maxSizeMB)` | Valida tamaño del archivo |
+| `validateFile(file, maxSizeMB, accept)` | Valida tamaño y tipo del archivo |
 | `formatFileSize(bytes)` | Formatea bytes a "1.23 MB" legible |
 
 ### `src/components/DropZone.tsx`
@@ -179,7 +221,7 @@ Consola interactiva para testing directo:
 
 - Acepta comandos JSON
 - `{"action": "list"}` → Lista tools registradas
-- `{"action": "invoke", "tool": "magic_picker", "input": {...}}` → Invoca la tool
+- `{"action": "invoke", "tool": "magic_picker", "input": {...}}` → Invoca la tool en el polyfill local; en WebMCP nativo se usa el inspector del navegador
 
 ### `src/components/StatusBar.tsx`
 Indicador fijo en esquina inferior derecha:
@@ -278,9 +320,9 @@ node scripts/final-check.cjs
 
 | Métrica | Valor |
 |---------|-------|
-| Archivos fuente | 14 (.ts/.tsx) |
-| Líneas de código | ~600 |
-| Bundle size | 154KB (50KB gzip) |
+| Archivos fuente | 12 (.ts/.tsx) + styles.css |
+| Líneas de código | ~850 incluyendo estilos |
+| Bundle size | ~163KB (52KB gzip) |
 | Dependencias runtime | 2 (react, react-dom) |
 | Dependencias dev | 4 (vite, typescript, plugin-react, types) |
 | Components | 5 React components |
@@ -300,7 +342,7 @@ node scripts/final-check.cjs
 
 ## 📝 Notas para el Video Demo
 
-**Script sugerido (3 min):**
+**Script sugerido (2:30–2:50 min):**
 
 1. **0:00-0:30** — Problema: Agentes no pueden operar file dialogs nativos
 2. **0:30-1:30** — Demo: ChatGPT invoca magic_picker → usuario selecciona → agente recibe base64
@@ -316,5 +358,6 @@ node scripts/final-check.cjs
 - [x] Build de producción
 - [x] Repo GitHub público
 - [ ] Video demo
-- [ ] URL de deploy
-- [ ] SUBMISSION.md con URLs actualizadas
+- [x] URL de deploy: https://magic-picker.vercel.app
+- [x] SUBMISSION.md con URL actualizada
+- [ ] URL pública del video de YouTube
