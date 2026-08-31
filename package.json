@@ -1,13 +1,13 @@
 {
-  "name": "magic-picker",
+  "name": "betterloop",
   "version": "1.0.0",
-  "description": "WebMCP file resolver — agents resolve files automatically without picker modals",
+  "description": "WebMCP continuity layer that helps Codex verify and continue long-running tasks",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "verify": "npm run build && node scripts/final-check.cjs && node scripts/verify-extension.cjs && node scripts/codex-magic-picker.cjs --self-test"
+    "verify": "npm run build && npx tsc --noEmit && node scripts/final-check.cjs && node scripts/betterloop-stop.cjs --self-test"
   },
   "dependencies": {
     "react": "^18.3.1",

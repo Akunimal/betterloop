@@ -1,110 +1,40 @@
-# MagicPicker — WebMCP Challenge Submission
-
-## Links
-
-- Repository: https://github.com/Akunimal/magicpicker
-- Live public demo: https://magic-picker.vercel.app
-- Video: `[add public video URL before submitting]`
+# BetterLoop — WebMCP Challenge Submission
 
 ## One-line pitch
 
-MagicPicker gives browser agents an explicit file handoff: the agent passes the exact path the user requested, and MagicPicker resolves it without breaking the flow on a native picker.
+BetterLoop is a user-activated WebMCP continuity layer that helps Codex verify whether the original job is 100% done, recover from quota pauses, research around uncertain blockers, and request the next turn without losing context.
 
-## The problem
+## Why this matters
 
-Browser agents operate in the web page, but native OS file dialogs sit outside the DOM. When an upload requires a file, the agent can stall, lose context, or force the user to take over.
+Agentic work often stops at the wrong boundary. A response can end while tests are still failing, a browser result is unverified, a usage limit pauses the run, or the first apparent blocker has an available workaround. BetterLoop turns those moments into explicit, inspectable continuation states.
 
-## The solution
+## Demo flow
 
-MagicPicker has a public WebMCP mode and an optional local Chromium bridge with one-click, temporary activation:
+1. Open the public page in Codex’s built-in browser.
+2. Press Turn BetterLoop ON. This is the only activation required for the page tools.
+3. Show the compact feature controls and turn on Auto-continue, 100% done, Quota recovery, and Research first.
+4. Start the guided demo.
+5. Show an evidence check that fails, then use the visible log to show the task staying open.
+6. Simulate a quota pause. BetterLoop records the five-hour recovery assumption without freezing the page.
+7. Mark quota available. BetterLoop resumes from the last checkpoint and plays the optional short sound.
+8. Mark the evidence complete. BetterLoop closes the run as 100% verified.
+9. In the repository, show .codex/hooks.json and scripts/betterloop-stop.cjs. The hook asks “Is the job 100% done?” at a Codex turn stop and can request another turn through the supported Stop hook contract.
 
-1. The public page registers `magic_picker_read` through `navigator.modelContext.registerTool()`.
-2. The user clicks **Activate MagicPicker — full browser access** to start a visible, temporary session.
-3. The agent passes the exact path instead of asking the app to guess a file.
-4. `magic_picker_tabs` lets Codex choose the destination tab without reading its contents.
-5. `magic_picker_attach` prepares that exact file in the chosen tab through the Codex CDP runtime or the MV3 extension.
-6. The browser-side handoff assigns the file and dispatches normal `input`/`change` events; ordinary clicks remain ordinary.
-7. A heartbeat ties the session to the open control page; closing it clears pending work and restores normal browser behavior.
+## WebMCP implementation
 
-Normal user clicks are untouched. This MVP intentionally does not claim to control arbitrary OS dialogs, Google OAuth popups, or terminal prompts.
+BetterLoop calls document.modelContext.registerTool after the explicit ON click. Tools are schema-defined and meaningful to an agent: they return state, evidence requirements, next actions, and continuation instructions rather than asking the agent to scrape the dashboard.
 
-The hosted submission demonstrates the page-scoped WebMCP flow in ChatGPT's built-in browser. The repository also includes the Codex embedded-browser adapter: Codex starts it as an approved local command with its CDP endpoint, so no external browser or dynamic extension installation is needed. The MV3 extension remains a supported alternative in Chromium sessions where extensions are already loaded.
+The local fallback is only for a visible demo when a native model context is unavailable. In a WebMCP-capable Codex browser, the native context is used.
 
-## Why WebMCP
+## Honest integration boundary
 
-WebMCP is the agent-facing contract. The site exposes a meaningful capability with a schema and description instead of relying on DOM scraping or a hidden automation protocol. The local extension complements that contract for cross-tab upload delivery in a Chromium instance where it is explicitly loaded.
+The page cannot silently install a Codex hook or alter approval settings. The project hook is included as a transparent, reviewable host integration. Codex may require the user to trust changed hooks and reopen the session. The five-hour reset is a conservative fallback because a web page cannot read private account quota state.
 
-## WebMCP contract
+Future work is a local App Server bridge to synchronize activation, receive exact lifecycle events, and schedule quota recovery. It is studied and documented as a possible next layer, not claimed as part of this four-day MVP.
 
-```javascript
-navigator.modelContext.registerTool({
-  name: 'magic_picker_read',
-  title: 'Read an exact local file',
-  inputSchema: {
-    type: 'object',
-    properties: {
-      path: { type: 'string', description: 'Exact requested file path' },
-      accept: { type: 'string' },
-      maxSizeMB: { type: 'number' }
-    },
-    required: ['path']
-  },
-  execute: async ({ path }) => resolveFromConnectedDirectory(path)
-});
-```
+## Links
 
-The control page exposes `magic_picker_tabs` and `magic_picker_attach`. In Codex mode, `scripts/codex-magic-picker.cjs` routes through the embedded browser's CDP targets. In extension mode, `background.js` routes by tab and request id, prefers `devin/filesystem.read_file` through the local MCP gateway, and falls back to the visible control page's authorized handle.
-
-## Technical highlights
-
-- React + TypeScript + Vite frontend.
-- Native WebMCP registration with a local same-tab polyfill only for development.
-- File System Access API and IndexedDB handle persistence.
-- MV3 extension with MAIN-world WebMCP agent and isolated content router.
-- Codex CDP adapter that stays inside the approved embedded-browser session.
-- WebSocket gateway contract compatible with `I:\mcp-gateway-master`.
-- Exact-path resolution; no arbitrary first-file fallback after an explicit path fails.
-- Pending-file queue with accept/selector matching and 25 MB safety limit.
-- Public Vercel deployment plus source and extension ZIP.
-
-## Judge demo
-
-### Public mode
-
-Open the live page in a WebMCP-enabled browser, click **Activate MagicPicker**, optionally click **Select project directory** for the FSA fallback, choose a small demo project, and ask the agent to read `src/App.tsx` or `package.json`.
-
-### Cross-tab mode
-
-Launch Chromium with the unpacked extension, open the MagicPicker page, click **Activate MagicPicker**, then open an upload page. Grant the directory only if the gateway fallback is unavailable. Ask the agent to call:
-
-```json
-{
-  "path": "C:\\demo\\assets\\logo.png",
-  "accept": "image/*"
-}
-```
-
-After the tool returns “File prepared”, click the target upload input. The file is assigned without a native dialog. A separate unprepared click should still open the normal picker.
-
-### Codex embedded mode
-
-Run the adapter with the CDP endpoint supplied by the Codex browser host:
-
-```powershell
-node scripts/codex-magic-picker.cjs --cdp-endpoint $env:CODEX_BROWSER_CDP_ENDPOINT
-```
-
-Click **Activate MagicPicker**, call `magic_picker_tabs`, then call `magic_picker_attach` with the exact path and returned `targetTabId`. The adapter assigns the file directly to the HTML input in that embedded session.
-
-## Criteria mapping
-
-- WebMCP leverage: native `registerTool`, explicit schemas, agent-readable descriptions, and a page-scoped activation status tool.
-- Execution: live Vite/Vercel page, persistent user permission, deterministic path resolver.
-- Impact: prevents a common agent dead-end and preserves human control for ordinary clicks.
-- Creativity: a small, defensible handoff protocol that can grow to other user interactions.
-
-The page makes the broad browser scope explicit to the user. It does not claim silent full-computer access: the local adapter needs an approved Codex command and an endpoint explicitly supplied by the host; the extension must already be loaded when that route is used. Codex retains its own local-command approvals.
-
-## License
-
-MIT
+- Live demo: https://betterloop-akunimal.vercel.app
+- WebMCP: https://webmachinelearning.github.io/webmcp/
+- Codex Site Tools: https://learn.chatgpt.com/docs/webmcp
+- Codex Hooks: https://learn.chatgpt.com/docs/hooks

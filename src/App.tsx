@@ -1,28 +1,6 @@
-import { StatusBar } from './components/StatusBar';
-import { DirectorySetup } from './components/DirectorySetup';
-import { ResolverLog } from './components/ResolverLog';
-import { BridgeStatus } from './components/BridgeStatus';
-import { ActivationPanel } from './components/ActivationPanel';
-import './styles.css';
+import { LoopDashboard } from './components/LoopDashboard'
+import './styles.css'
 
-function App() {
-  return (
-    <div className="app">
-      <header>
-        <span className="logo"><span className="logo-icon">✦</span> MagicPicker</span>
-        <span className="tagline">WebMCP + local handoff</span>
-      </header>
-
-      <main>
-        <ActivationPanel />
-        <DirectorySetup />
-        <BridgeStatus />
-        <ResolverLog />
-      </main>
-
-      <StatusBar />
-    </div>
-  );
+export default function App() {
+  return <LoopDashboard />
 }
-
-export default App;

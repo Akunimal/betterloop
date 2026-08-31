@@ -1,51 +1,53 @@
-// Local polyfill for development/testing when WebMCP is not enabled in the browser.
-// In production with WebMCP-enabled Chrome, navigator.modelContext is native
-// and this polyfill is NOT installed.
+import type { WebMCPExecuteOptions, WebMCPTool } from '../webmcp-types'
 
-const hasNativeWebMCP = !!(navigator as any).modelContext;
+export interface ModelContextLike {
+  registerTool: (tool: WebMCPTool, options?: { signal?: AbortSignal; exposedTo?: string[] }) => Promise<unknown> | unknown
+  getTools: (options?: { fromOrigins?: string[] }) => Promise<unknown[]> | unknown[]
+  executeTool?: (tool: unknown, input?: Record<string, unknown>, options?: { signal?: AbortSignal }) => Promise<unknown>
+  unregisterTool?: (name: string) => void
+  __betterLoopPolyfill?: boolean
+}
 
-if (hasNativeWebMCP) {
-  console.log('🪄 WebMCP native API detected — polyfill skipped');
+type BetterLoopDocument = Document & { modelContext?: ModelContextLike }
+
+class LocalModelContext implements ModelContextLike {
+  readonly __betterLoopPolyfill = true
+  private tools = new Map<string, WebMCPTool>()
+
+  async registerTool(tool: WebMCPTool): Promise<void> {
+    this.tools.set(tool.name, tool)
+    window.dispatchEvent(new CustomEvent('betterloop:registered'))
+  }
+
+  unregisterTool(name: string): void {
+    this.tools.delete(name)
+    window.dispatchEvent(new CustomEvent('betterloop:registered'))
+  }
+
+  getTools(): WebMCPTool[] {
+    return [...this.tools.values()]
+  }
+
+  async executeTool(tool: unknown, input: Record<string, unknown> = {}, options?: { signal?: AbortSignal }): Promise<unknown> {
+    return (tool as WebMCPTool).execute(input, options as WebMCPExecuteOptions)
+  }
+}
+
+const page = document as BetterLoopDocument
+const nativeModelContext = page.modelContext
+
+if (!nativeModelContext) {
+  page.modelContext = new LocalModelContext()
+  console.info('[BetterLoop] Local WebMCP fallback active. Native discovery is unavailable in this browser.')
 } else {
-  // Install minimal local polyfill for same-tab testing only.
-  // Cross-tab will NOT work with this — only native WebMCP does that.
+  console.info('[BetterLoop] Native document.modelContext detected.')
+}
 
-  interface ToolDefinition {
-    name: string;
-    description: string;
-    inputSchema: any;
-    execute: (input: any) => Promise<any>;
-  }
+export function getModelContext(): ModelContextLike {
+  return page.modelContext!
+}
 
-  class WebMCPPolyfill {
-    private tools: Map<string, ToolDefinition> = new Map();
-    readonly __magicPickerPolyfill = true;
-
-    registerTool(tool: ToolDefinition) {
-      this.tools.set(tool.name, tool);
-      console.log(`🪄 [Polyfill] Tool registered: ${tool.name}`);
-    }
-
-    unregisterTool(name: string) {
-      this.tools.delete(name);
-    }
-
-    getTool(name: string): ToolDefinition | undefined {
-      return this.tools.get(name);
-    }
-
-    getTools(): ToolDefinition[] {
-      return Array.from(this.tools.values());
-    }
-
-    async invokeTool(name: string, input: any): Promise<any> {
-      const tool = this.tools.get(name);
-      if (!tool) throw new Error(`Tool not found: ${name}`);
-      console.log(`🪄 [Polyfill] Invoking tool: ${name}`, input);
-      return tool.execute(input);
-    }
-  }
-
-  (window as any).modelContext = new WebMCPPolyfill();
-  console.log('🪄 WebMCP local polyfill activated (same-tab testing only)');
+export function getWebMCPMode(): 'native' | 'polyfill' | 'none' {
+  if (!page.modelContext) return 'none'
+  return page.modelContext.__betterLoopPolyfill ? 'polyfill' : 'native'
 }

@@ -1,87 +1,124 @@
-const fs = require('fs');
+const fs = require('node:fs')
+const path = require('node:path')
 
-console.log('🔍 MagicPicker — final verification\n');
-
+const root = process.cwd()
 const requiredFiles = [
   'package.json',
   'vite.config.ts',
   'index.html',
   'README.md',
   'SUBMISSION.md',
-  'LICENSE',
-  'VIDEO_SCRIPT.md',
-  'PICKER_BRIDGE.md',
   'STATE.md',
+  'VIDEO_SCRIPT.md',
+  'LICENSE',
   'src/main.tsx',
   'src/App.tsx',
   'src/styles.css',
   'src/webmcp-types.ts',
-  'src/webmcp/magicPickerTool.ts',
-  'src/webmcp/extensionControlBridge.ts',
   'src/webmcp/polyfill.ts',
-  'src/state/fileResolver.ts',
+  'src/webmcp/betterLoopTools.ts',
+  'src/state/loopStore.ts',
+  'src/components/LoopDashboard.tsx',
+  'src/components/ActivityTimeline.tsx',
+  'src/ui/sound.ts',
+  'scripts/betterloop-stop.cjs',
+  '.codex/hooks.json',
+  '.betterloop/config.example.json',
+]
+
+const obsoleteFiles = [
+  'PICKER_BRIDGE.md',
+  'extension/agent.js',
+  'extension/background.js',
+  'extension/content.js',
+  'extension/manifest.json',
+  'scripts/codex-magic-picker.cjs',
+  'scripts/verify-extension.cjs',
   'src/state/activation.ts',
+  'src/state/fileResolver.ts',
   'src/webmcp/codexRuntime.ts',
-  'src/components/BridgeStatus.tsx',
+  'src/webmcp/extensionControlBridge.ts',
+  'src/webmcp/fsa.d.ts',
+  'src/webmcp/magicPickerTool.ts',
   'src/components/ActivationPanel.tsx',
+  'src/components/BridgeStatus.tsx',
   'src/components/DirectorySetup.tsx',
   'src/components/ResolverLog.tsx',
-  'src/components/StatusBar.tsx',
-  'extension/manifest.json',
-  'extension/agent.js',
-  'extension/content.js',
-  'extension/background.js',
-  'public/magic.svg',
   'public/agent-demo.html',
   'public/extension.zip',
-  'scripts/codex-magic-picker.cjs'
-];
+  'public/magic.svg',
+]
 
-let allGood = true;
-for (const file of requiredFiles) {
-  if (fs.existsSync(file)) console.log(`  ✅ ${file}`);
-  else { console.log(`  ❌ Missing: ${file}`); allGood = false; }
+let allGood = true
+function check(label, condition) {
+  console.log('  ' + (condition ? '✅' : '❌') + ' ' + label)
+  allGood = allGood && Boolean(condition)
 }
 
-const packageJson = JSON.parse(fs.readFileSync('package.json', 'utf8'));
-for (const script of ['dev', 'build', 'preview']) {
-  const ok = Boolean(packageJson.scripts && packageJson.scripts[script]);
-  console.log(`  ${ok ? '✅' : '❌'} script:${script}`);
-  allGood = allGood && ok;
-}
+console.log('🔍 BetterLoop — final verification')
+for (const file of requiredFiles) check(file, fs.existsSync(path.join(root, file)))
+for (const file of obsoleteFiles) check('removed ' + file, !fs.existsSync(path.join(root, file)))
 
-const manifest = JSON.parse(fs.readFileSync('extension/manifest.json', 'utf8'));
-const manifestChecks = [
-  ['MV3 manifest', manifest.manifest_version === 3],
-  ['agent exposed', manifest.web_accessible_resources?.some((item) => item.resources?.includes('agent.js'))],
-  ['content router', manifest.content_scripts?.some((item) => item.js?.includes('content.js'))],
-  ['service worker', manifest.background?.service_worker === 'background.js']
-];
-for (const [label, ok] of manifestChecks) {
-  console.log(`  ${ok ? '✅' : '❌'} ${label}`);
-  allGood = allGood && ok;
-}
+const packageJson = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'))
+check('package name is betterloop', packageJson.name === 'betterloop')
+for (const script of ['dev', 'build', 'preview', 'verify']) check('script:' + script, Boolean(packageJson.scripts?.[script]))
 
-const sourceChecks = [
-  ['exact read tool', /magic_picker_read/.test(fs.readFileSync('src/webmcp/magicPickerTool.ts', 'utf8'))],
-  ['exact attach tool', /magic_picker_attach/.test(fs.readFileSync('extension/agent.js', 'utf8'))],
-  ['request correlation', /requestId/.test(fs.readFileSync('extension/background.js', 'utf8'))],
-  ['page channel token', /channelToken/.test(fs.readFileSync('extension/agent.js', 'utf8')) && /channelToken/.test(fs.readFileSync('extension/content.js', 'utf8'))],
-  ['safe normal click fallback', /Normal user clicks retain native picker behavior/.test(fs.readFileSync('extension/content.js', 'utf8'))],
-  ['temporary activation session', /SESSION_TTL_MS/.test(fs.readFileSync('extension/background.js', 'utf8')) && /control-heartbeat/.test(fs.readFileSync('extension/content.js', 'utf8'))],
-  ['dormant outside session', /sessionActive = false/.test(fs.readFileSync('extension/content.js', 'utf8')) && /get-session-state/.test(fs.readFileSync('extension/content.js', 'utf8'))],
-  ['cross-tab control operations', /control-operation/.test(fs.readFileSync('extension/background.js', 'utf8')) && /targetTabId/.test(fs.readFileSync('src/webmcp/magicPickerTool.ts', 'utf8'))],
-  ['Codex CDP runtime', /DOM\.setFileInputFiles/.test(fs.readFileSync('scripts/codex-magic-picker.cjs', 'utf8')) && /CODEX_BROWSER_CDP_ENDPOINT/.test(fs.readFileSync('scripts/codex-magic-picker.cjs', 'utf8'))],
-  ['no dead interceptor', !fs.existsSync('extension/interceptor.js')]
-];
-for (const [label, ok] of sourceChecks) {
-  console.log(`  ${ok ? '✅' : '❌'} ${label}`);
-  allGood = allGood && ok;
-}
+const types = fs.readFileSync(path.join(root, 'src/webmcp-types.ts'), 'utf8')
+const store = fs.readFileSync(path.join(root, 'src/state/loopStore.ts'), 'utf8')
+const tools = fs.readFileSync(path.join(root, 'src/webmcp/betterLoopTools.ts'), 'utf8')
+const hook = fs.readFileSync(path.join(root, 'scripts/betterloop-stop.cjs'), 'utf8')
+const hookConfig = JSON.parse(fs.readFileSync(path.join(root, '.codex/hooks.json'), 'utf8'))
+const index = fs.readFileSync(path.join(root, 'index.html'), 'utf8')
 
-console.log('\n' + '='.repeat(50));
+for (const tool of [
+  'betterloop_start',
+  'betterloop_checkpoint',
+  'betterloop_research_blocker',
+  'betterloop_verify_completion',
+  'betterloop_report_quota',
+  'betterloop_resume',
+  'betterloop_finish',
+  'betterloop_status',
+]) check('tool ' + tool, tools.includes('name: \'' + tool + '\''))
+
+check('native document.modelContext contract', fs.readFileSync(path.join(root, 'src/webmcp/polyfill.ts'), 'utf8').includes('document as BetterLoopDocument') && fs.readFileSync(path.join(root, 'src/webmcp/polyfill.ts'), 'utf8').includes('modelContext'))
+check('auto continue feature', types.includes('autoContinue') && store.includes('autoContinue: true'))
+check('explicit 100% question', types.includes('askIfDone') && hook.includes('Is the job 100% done?'))
+check('sound feature', types.includes('soundAlerts') && fs.existsSync(path.join(root, 'src/ui/sound.ts')))
+check('five-hour fallback', tools.includes('5 * 60 * 60 * 1000') && hook.includes('quotaAssumptionHours'))
+check('research-first guard', types.includes('researchBeforeBlocking') && tools.includes('needsResearch'))
+check('Stop hook loop guard', hook.includes('stop_hook_active') && hook.includes("decision: 'block'"))
+check('Stop hook config shape', Array.isArray(hookConfig.hooks?.Stop) && hookConfig.hooks.Stop[0]?.hooks?.[0]?.type === 'command')
+check('BetterLoop metadata', index.includes('betterloop-control') && index.includes('<title>BetterLoop'))
+
+const activePaths = [
+  'README.md',
+  'STATE.md',
+  'SUBMISSION.md',
+  'VIDEO_SCRIPT.md',
+  'src',
+  'index.html',
+  'package.json',
+  'scripts/betterloop-stop.cjs',
+  '.codex',
+  '.betterloop',
+]
+const activeText = activePaths.map((item) => {
+  const full = path.join(root, item)
+  if (!fs.existsSync(full)) return ''
+  if (fs.statSync(full).isDirectory()) {
+    return fs.readdirSync(full, { withFileTypes: true }).map((entry) => {
+      const child = path.join(full, entry.name)
+      return entry.isDirectory() ? '' : fs.readFileSync(child, 'utf8')
+    }).join('\n')
+  }
+  return fs.readFileSync(full, 'utf8')
+}).join('\n')
+check('no retired implementation names remain', !/(magic.?picker|magic_picker|fileResolver|extensionControlBridge|codexRuntime|DOM\\.setFileInputFiles)/i.test(activeText))
+
+console.log('\n' + '='.repeat(50))
 if (!allGood) {
-  console.log('❌ Some checks failed.');
-  process.exit(1);
+  console.log('❌ Some checks failed.')
+  process.exit(1)
 }
-console.log('✅ MagicPicker is ready for browser validation and submission.');
+console.log('✅ BetterLoop is ready for browser validation and submission.')
