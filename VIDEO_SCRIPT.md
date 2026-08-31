@@ -1,5 +1,7 @@
 # BetterLoop demo script
 
+> Recording note: use [VIDEO_SCRIPT_EN.md](VIDEO_SCRIPT_EN.md) as the exact neutral-English narration track. This file remains the shot list and agent-action checklist for the integrated demo.
+
 ## 0:00 — The problem
 
 “Codex can do a long agentic task, but the end of a response is not always the end of the job. A quota pause, an unverified result, or an uncertain error can leave the user with an incomplete workflow.”

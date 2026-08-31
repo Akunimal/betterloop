@@ -28,6 +28,8 @@ Detailed reproducible instructions are in [JUDGE_GUIDE.md](JUDGE_GUIDE.md).
 
 For a short manual-only recording, the same visible result can be produced with `Start guided demo`, `Needs more work`, `Simulate quota`, `Quota available`, and `Mark 100% done`; this is the public fallback, not a claim that the agent called the tools.
 
+The exact neutral-English narration, timing map, and free TTS instructions are in [VIDEO_SCRIPT_EN.md](VIDEO_SCRIPT_EN.md).
+
 ## WebMCP implementation
 
 BetterLoop calls document.modelContext.registerTool after the explicit ON click. Tools are schema-defined and meaningful to an agent: they return state, evidence requirements, next actions, and continuation instructions rather than asking the agent to scrape the dashboard. The `betterloop_hook_ready` tool is the explicit page-side confirmation after Codex's trusted `SessionStart` hook runs.

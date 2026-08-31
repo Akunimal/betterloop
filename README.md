@@ -29,6 +29,10 @@ For the full agent-integrated path, use the repository from a trusted Codex proj
 
 The host path is intentionally split: Vercel serves the visible page, while the local MCP process runs inside the judge’s agent environment. A public page cannot start a Node process on a judge’s computer by itself. See [JUDGE_GUIDE.md](JUDGE_GUIDE.md) for the complete reproducible route.
 
+## Video and voice-over
+
+The recording plan and exact neutral-English narration are in [VIDEO_SCRIPT_EN.md](VIDEO_SCRIPT_EN.md). The fastest free route for this submission is to paste the copy-ready narration into [TTSMaker](https://ttsmaker.com/) and export MP3 or WAV, keeping each paragraph as a separate edit point. ElevenLabs is a higher-polish alternative, but its free plan currently requires attribution for published content and does not include a commercial license. Kokoro is the local, no-account fallback when setup time allows.
+
 ## The final 100% check
 
 The optional Codex Stop hook in .codex/hooks.json asks the agent:
