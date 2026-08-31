@@ -1,0 +1,18 @@
+{
+  "manifest_version": 3,
+  "name": "Magic Picker — File Resolver",
+  "version": "1.0.0",
+  "description": "Intercepts file inputs and resolves them via WebMCP magic_picker tool.",
+  "permissions": ["activeTab", "storage"],
+  "host_permissions": ["<all_urls>"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["interceptor.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

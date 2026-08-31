@@ -41,6 +41,16 @@ Open http://localhost:3000
 npm run build
 ```
 
+### Browser Extension (optional)
+
+The extension intercepts `<input type="file">` on any website and resolves files automatically from your connected project directory.
+
+1. Open `chrome://extensions/`
+2. Enable **Developer mode**
+3. Click **Load unpacked** → select the `extension/` folder
+4. Connect your project directory on the Magic Picker webapp
+5. File inputs on any website will now resolve automatically
+
 ## 🛠️ WebMCP Tool
 
 ### `magic_picker`
