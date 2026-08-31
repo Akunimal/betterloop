@@ -6,6 +6,12 @@ const TOOL_NAME = 'magic_picker';
 let registered = false;
 let registrationMode: 'native' | 'polyfill' | 'none' = 'none';
 
+function formatSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes}B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)}KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;
+}
+
 /**
  * Register magic_picker with the browser's native WebMCP API.
  *
@@ -56,23 +62,29 @@ export async function registerMagicPickerTool(): Promise<boolean> {
 
     console.log('🪄 Magic Picker resolving:', { accept, prompt });
 
+    const emitEvent = (detail: Record<string, unknown>) => {
+      window.dispatchEvent(new CustomEvent('magic-picker:resolve', { detail }));
+    };
+
+    // Emit "resolving" status immediately
+    emitEvent({
+      file: prompt || accept || 'searching...',
+      path: prompt,
+      status: 'resolving'
+    });
+
     // Resolve file(s) automatically — no modal
     const result = await resolveFile({ accept, multiple, maxSizeMB, prompt });
 
-    if (result.success) {
-      console.log('🪄 Magic Picker resolved:', result.fileName);
-    } else {
-      console.warn('🪄 Magic Picker could not resolve:', result.error);
-    }
-
-    // Emit event for the resolver log UI
-    window.dispatchEvent(new CustomEvent('magic-picker:resolve', {
-      detail: {
-        file: result.fileName || prompt || 'unknown',
-        status: result.success ? 'resolved' : 'error',
-        detail: result.error
-      }
-    }));
+    // Emit final result
+    emitEvent({
+      file: result.fileName || prompt || 'unknown',
+      path: prompt,
+      status: result.success ? 'resolved' : 'error',
+      size: result.fileSize ? formatSize(result.fileSize) : undefined,
+      type: result.fileType,
+      detail: result.error
+    });
 
     return result;
   };

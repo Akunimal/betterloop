@@ -1301,3 +1301,202 @@ code {
 .log-error .log-status {
   color: #fca5a5;
 }
+
+/* ------------------------------------------------------------------ */
+/* Toast notifications                                                 */
+/* ------------------------------------------------------------------ */
+
+.toast {
+  position: fixed;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 22px;
+  border-radius: 14px;
+  font-size: 13px;
+  font-weight: 600;
+  z-index: 9999;
+  animation: toast-in 0.3s ease-out;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+.toast-resolved {
+  background: linear-gradient(135deg, #0d3d38, #0a2925);
+  border: 1px solid rgba(121, 217, 208, 0.3);
+  color: var(--cyan);
+}
+
+.toast-error {
+  background: linear-gradient(135deg, #3d0d0d, #290a0a);
+  border: 1px solid rgba(252, 165, 165, 0.3);
+  color: #fca5a5;
+}
+
+.toast-icon {
+  font-size: 16px;
+}
+
+@keyframes toast-in {
+  from { opacity: 0; transform: translateX(-50%) translateY(20px); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+/* ------------------------------------------------------------------ */
+/* Activity feed (enhanced)                                            */
+/* ------------------------------------------------------------------ */
+
+.log-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.log-count {
+  color: #606c87;
+  font-size: 11px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.log-empty-state {
+  text-align: center;
+  padding: 32px 16px;
+}
+
+.log-empty-icon {
+  font-size: 28px;
+  color: var(--purple);
+  margin-bottom: 12px;
+  opacity: 0.5;
+}
+
+.log-empty-state p {
+  margin: 0;
+  color: #7f8ba6;
+  font-size: 13px;
+}
+
+.log-empty-hint {
+  margin-top: 6px !important;
+  font-size: 11px !important;
+  color: #505a70 !important;
+}
+
+.log-entry {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(168, 180, 218, 0.06);
+  font-size: 12px;
+  animation: entry-in 0.3s ease-out both;
+}
+
+.log-entry:last-child {
+  border-bottom: none;
+}
+
+.log-entry-new {
+  background: rgba(121, 217, 208, 0.04);
+}
+
+@keyframes entry-in {
+  from { opacity: 0; transform: translateX(-8px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.log-entry-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+
+.log-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.log-dot-resolved { background: var(--cyan); box-shadow: 0 0 8px rgba(121, 217, 208, 0.5); }
+.log-dot-resolving { background: var(--gold); animation: pulse 1s infinite; }
+.log-dot-error { background: #fca5a5; }
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+.log-entry-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.log-entry .log-file {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  color: var(--ink);
+}
+
+.log-path {
+  color: #505a70;
+  font-size: 10px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.log-entry-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.log-size,
+.log-type {
+  color: #606c87;
+  font-size: 10px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.log-type {
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(157, 124, 255, 0.1);
+  color: var(--purple);
+}
+
+.log-badge {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.log-badge-resolved {
+  background: rgba(121, 217, 208, 0.15);
+  color: var(--cyan);
+}
+
+.log-badge-resolving {
+  background: rgba(247, 189, 107, 0.15);
+  color: var(--gold);
+}
+
+.log-badge-error {
+  background: rgba(252, 165, 165, 0.15);
+  color: #fca5a5;
+}
