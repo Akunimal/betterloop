@@ -22,40 +22,29 @@ export const DirectorySetup: React.FC = () => {
     setLoading(false);
   };
 
-  if (loading) {
-    return (
-      <div className="setup-panel">
-        <div className="setup-status">Checking permissions...</div>
-      </div>
-    );
-  }
-
-  if (connected) {
-    return (
-      <div className="setup-panel setup-connected">
-        <div className="setup-icon">✓</div>
-        <div className="setup-info">
-          <h3>Connected</h3>
-          <p className="setup-dir">{dirName}</p>
-          <p className="setup-hint">Agents can resolve files from this directory</p>
-        </div>
-        <button className="button button-secondary" onClick={handleConnect}>
-          Change directory
-        </button>
-      </div>
-    );
-  }
-
   return (
-    <div className="setup-panel setup-disconnected">
-      <div className="setup-icon">📁</div>
-      <div className="setup-info">
-        <h3>No directory connected</h3>
-        <p className="setup-hint">Select your project directory to enable auto-resolution</p>
-      </div>
-      <button className="button button-primary" onClick={handleConnect}>
-        Select project directory
-      </button>
+    <div className="dir-card">
+      <h3>Project directory</h3>
+      <p>Connect once. Agents resolve files from here automatically.</p>
+
+      {loading ? (
+        <p style={{ color: '#505a70', fontSize: 13 }}>Checking permissions...</p>
+      ) : connected ? (
+        <>
+          <div className="dir-connected">
+            <span className="dir-connected-icon">✓</span>
+            <span className="dir-connected-name">{dirName}</span>
+            <span className="dir-connected-badge">active</span>
+          </div>
+          <button className="dir-btn" onClick={handleConnect} style={{ marginTop: 12 }}>
+            Change directory
+          </button>
+        </>
+      ) : (
+        <button className="dir-btn" onClick={handleConnect}>
+          📁 Select project directory
+        </button>
+      )}
     </div>
   );
 };
