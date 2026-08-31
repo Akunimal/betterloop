@@ -18,17 +18,17 @@ Ask the agent to read `src/App.tsx`. Show the activity feed and returned result.
 
 > One exact path, one tool call, and the agent keeps moving.
 
-## 0:55–1:55 — Cross-tab upload mode
+## 0:55–1:55 — Cross-tab upload mode inside Codex
 
-Switch to the Chromium instance launched with the unpacked MagicPicker extension. Keep the activated MagicPicker tab open, then show an upload page in another tab.
+Keep the activated MagicPicker tab open in Codex's embedded Chromium, then show an upload page in another tab. If the host exposes its CDP endpoint, Codex starts `scripts/codex-magic-picker.cjs` as an approved local command.
 
-Ask the agent to call `magic_picker_attach` with the exact local path.
+Ask the agent to call `magic_picker_tabs`, select the upload tab, and call `magic_picker_attach` with the exact local path and `targetTabId`.
 
-> In local Chromium mode, the extension adds a second WebMCP capability: `magic_picker_attach`. Codex knows which file the user asked for and passes that exact path. The extension routes the request by tab and request ID. It first tries the local MCP gateway, then falls back to the visible MagicPicker control page.
+> MagicPicker gives Codex the missing handoff capability. It lists only tab metadata, receives the exact path Codex already knows, and assigns that file inside the selected embedded tab. If the CDP runtime is unavailable, the same contract works through the MV3 extension when it is already loaded.
 
-Wait for the tool result: “File prepared. Click the target file input now.” Click the upload input.
+Wait for the tool result and continue the upload flow in the target tab.
 
-> The extension has already prepared the file, so it cancels only this prepared click, assigns the File with DataTransfer, and dispatches the normal input and change events. No native dialog appears. If the MagicPicker page closes or its heartbeat expires, the extension sleeps and this becomes an ordinary picker again.
+> The Codex runtime uses CDP's file-input handoff, so no native dialog appears. In extension mode, only the prepared click is cancelled and normal input/change events are dispatched. If the MagicPicker page closes or its heartbeat expires, the bridge stops accepting work.
 
 Make one separate click without calling `magic_picker_attach`.
 
@@ -38,7 +38,7 @@ Make one separate click without calling `magic_picker_attach`.
 
 Show the repository files: `agent.js`, `content.js`, `background.js`, and `extensionControlBridge.ts`.
 
-> The page-facing agent uses WebMCP. The control page starts a temporary session with a heartbeat. The isolated content script relays messages, and the service worker routes to the gateway or control tab. When that session ends, pending files are cleared and normal clicks pass through. The design is deliberately scoped: it handles HTML file inputs, not arbitrary OS dialogs, Google OAuth popups, or terminal prompts.
+> The page-facing control plane uses WebMCP. The Codex runtime routes to the embedded Chromium through CDP; the optional extension uses an isolated content script, a service worker, and the local gateway. When the session ends, all routes stop and normal clicks pass through. The design is deliberately scoped: it handles HTML file inputs, not arbitrary OS dialogs, Google OAuth popups, or terminal prompts.
 
 ## 2:25–2:45 — Close
 
@@ -55,4 +55,4 @@ Show the live URL and repository.
 - If the gateway is not running, demonstrate the control-page FSA fallback and say so.
 - Do not claim interception of an already-open OS dialog or arbitrary Google/terminal popups.
 - Say “full browser access for this temporary session,” not “silent full-computer access.”
-- If mentioning the next phase, say that on-demand loading through a Codex/Chromium launcher was studied as feasible but is not implemented in this build.
+- If the host does not expose CDP, say that the adapter reports unavailable and the preloaded MV3 extension is the fallback; do not claim silent installation.

@@ -8,8 +8,10 @@ import {
 } from '../state/activation';
 
 function statusCopy(snapshot: ActivationSnapshot): string {
-  if (snapshot.status === 'active' && snapshot.extensionDetected) {
-    return 'Active in this browser session. Codex can use the local handoff while this page stays open.';
+  if (snapshot.status === 'active' && (snapshot.extensionDetected || snapshot.runtimeDetected)) {
+    return snapshot.runtimeDetected
+      ? 'Active inside the Codex-managed Chromium session. Codex can use the cross-tab handoff while this page stays open.'
+      : 'Active in this browser session. Codex can use the local handoff while this page stays open.';
   }
   if (snapshot.status === 'active') {
     return 'Consent recorded. Waiting for the local browser bridge to confirm the extension.';
@@ -35,7 +37,7 @@ export const ActivationPanel: React.FC = () => {
           <h2 id="activation-title">Activate MagicPicker</h2>
         </div>
         <span className="activation-badge">
-          {snapshot.status === 'active' && snapshot.extensionDetected
+          {snapshot.status === 'active' && (snapshot.extensionDetected || snapshot.runtimeDetected)
             ? 'live'
             : snapshot.status === 'degraded'
             ? 'degraded'

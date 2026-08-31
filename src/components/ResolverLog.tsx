@@ -73,7 +73,7 @@ export const ResolverLog: React.FC = () => {
           <div className="log-empty-state">
             <div className="log-empty-icon">✦</div>
             <p>Waiting for agent requests...</p>
-            <p className="log-empty-hint">When an agent calls magic_picker, activity appears here</p>
+            <p className="log-empty-hint">When an agent calls a MagicPicker tool, activity appears here</p>
           </div>
         ) : (
           <div className="log-entries">

@@ -28,22 +28,33 @@ The project directory button is an optional fallback for the public browser-only
 
 The page also exposes `magic_picker_activate` so Codex can verify that the user-authorized session is live. A webpage cannot push a new prompt into Codex or bypass Codex's approval policy; after activation, Codex discovers/uses the available tool according to its normal browser and local-command rules.
 
-The hosted demo is the embedded-browser WebMCP path. The optional cross-tab extension is packaged and ready for a supported local Chromium launch. We studied an on-demand Codex/Chromium launcher or managed-extension handoff that could load it after the user's explicit consent; that integration is feasible but is not implemented in this submission. A web page alone cannot perform that browser-level installation.
+The hosted demo is the embedded-browser WebMCP path. For Codex's embedded Chromium, the repository now includes `scripts/codex-magic-picker.cjs`: Codex starts it as an approved local command with the embedded browser's CDP endpoint. It does not launch an external browser or install an extension; it operates only inside the supplied Codex browser session. The MV3 extension remains available for a Chromium session where extensions are already allowed.
 
 ## Two supported modes
 
 ### Public WebMCP mode
 
-Open the live page in a WebMCP-enabled browser, click **Activate MagicPicker** if you want the temporary bridge, and optionally click **Select project directory** for browser-only file access. The page registers `magic_picker_read`, `magic_picker_activate` (plus the backwards-compatible `magic_picker` alias). Same-page mode needs no extension or local server.
+Open the live page in a WebMCP-enabled browser, click **Activate MagicPicker** if you want the temporary bridge, and optionally click **Select project directory** for browser-only file access. The page registers `magic_picker_read`, `magic_picker_activate`, `magic_picker_tabs`, and `magic_picker_attach`. Same-page read mode needs no extension or local server.
 
 ### Local cross-tab bridge
 
 Use a Chromium instance launched with the unpacked MV3 extension. Open the MagicPicker page in that same instance, click **Activate MagicPicker**, then browse to the target upload page. The extension registers:
 
 - `magic_picker_read`: read the exact path and return content/metadata.
-- `magic_picker_attach`: prepare the exact path for the current tab, then click its HTML file input.
+- `magic_picker_tabs`: list safe metadata for the available browser tabs.
+- `magic_picker_attach`: prepare the exact path for the selected tab, then continue its HTML file upload.
 
 The extension first calls `devin/filesystem.read_file` through the local MCP gateway at `ws://127.0.0.1:8765/ws`. If that provider is unavailable or cannot return bytes for an upload, it asks the visible MagicPicker control page to read through its user-granted File System Access handle.
+
+### Codex embedded-browser bridge
+
+Codex can start the local adapter after the user clicks **Activate MagicPicker**:
+
+```powershell
+node scripts/codex-magic-picker.cjs --cdp-endpoint $env:CODEX_BROWSER_CDP_ENDPOINT
+```
+
+The adapter listens only on `127.0.0.1:8766`, keeps the same short-lived session id as the control page, lists CDP page targets, and uses `DOM.setFileInputFiles` for the exact requested path. No external Chromium is launched. If the Codex host does not expose a CDP endpoint, the MV3 extension route is used when it is already loaded; the app does not pretend that a web page can install one dynamically.
 
 ## Quick start
 
@@ -68,18 +79,17 @@ The distributable is `public/extension.zip`. Extract it and load the extracted f
 --load-extension=C:\path\to\magicpicker-extension
 ```
 
-The extension is not silently installed into an existing browser profile. It must be loaded at browser startup or through the browser's developer/managed extension mechanism. CDP can be used to inspect the running tabs and service worker, but the extension message channel is the file data plane.
+The extension is not silently installed into an existing browser profile. It must be loaded at browser startup or through the browser's developer/managed extension mechanism. In Codex, use the CDP adapter above instead of trying to mutate the embedded profile.
 
 ## Exact attach flow
 
 ```text
 Codex sees magic_picker_attach
-  → magic_picker_attach({ path: "C:\\work\\demo\\image.png" })
-  → gateway or control page resolves exact path
-  → extension queues bytes for the originating tab
-  → Codex clicks that tab's <input type="file">
-  → only the prepared click is cancelled
-  → File is assigned with DataTransfer and input/change are dispatched
+  → magic_picker_tabs()
+  → magic_picker_attach({ path: "C:\\work\\demo\\image.png", targetTabId })
+  → Codex runtime or extension resolves the exact path
+  → the selected tab receives the prepared file
+  → Codex continues the upload flow without a native picker
 ```
 
 The target must be a normal web page with an HTML `<input type="file">`. The extension does not guess which file the user meant: the agent supplies `path`.
@@ -104,6 +114,7 @@ node scripts/final-check.cjs
 node --check extension/background.js
 node --check extension/content.js
 node --check extension/agent.js
+node scripts/codex-magic-picker.cjs --self-test
 ```
 
 ## Stack and license

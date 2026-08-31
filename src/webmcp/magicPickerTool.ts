@@ -7,10 +7,13 @@ import {
   type ResolveOptions,
 } from '../state/fileResolver';
 import { FileResult } from '../webmcp-types';
-import { getActivationSnapshot } from '../state/activation';
+import { getActivationSnapshot, markRuntimeDetected } from '../state/activation';
+import { requestExtensionOperation } from './extensionControlBridge';
+import { activateLocalRuntime, requestLocalRuntimeOperation } from './codexRuntime';
 
-const TOOL_NAME = 'magic_picker';
 const READ_TOOL_NAME = 'magic_picker_read';
+const ATTACH_TOOL_NAME = 'magic_picker_attach';
+const TABS_TOOL_NAME = 'magic_picker_tabs';
 const ACTIVATE_TOOL_NAME = 'magic_picker_activate';
 
 let registered = false;
@@ -78,6 +81,18 @@ const inputSchema = {
       type: 'number',
       description: 'Maximum file size in megabytes. Defaults to 50.',
     },
+    targetTabId: {
+      type: 'number',
+      description: 'Optional tab id returned by magic_picker_tabs. Use it to prepare an upload in another browser tab.',
+    },
+    inputSelector: {
+      type: 'string',
+      description: 'Optional CSS selector for the target HTML file input.',
+    },
+    autoAttach: {
+      type: 'boolean',
+      description: 'If true, attach immediately when the target input can be identified; otherwise prepare it for the next matching click.',
+    },
   },
   required: ['path'],
 };
@@ -94,6 +109,19 @@ function resolverOptions(input: Record<string, unknown>): ResolveOptions {
 
 function emitEvent(detail: Record<string, unknown>): void {
   window.dispatchEvent(new CustomEvent('magic-picker:resolve', { detail }));
+}
+
+async function requestControlOperation(operation: 'list-tabs' | 'attach', params: Record<string, unknown> = {}): Promise<any> {
+  const state = getActivationSnapshot();
+  if (state.sessionId) {
+    try {
+      return await requestLocalRuntimeOperation(operation, state.sessionId, params);
+    } catch (_) {
+      // The CDP adapter is optional. The MV3 extension is the fallback when
+      // the browser session does not expose the local runtime endpoint.
+    }
+  }
+  return requestExtensionOperation(operation, params);
 }
 
 async function executeResolver(input: Record<string, unknown>): Promise<FileResult> {
@@ -161,34 +189,98 @@ export async function registerMagicPickerTool(): Promise<boolean> {
     annotations: { readOnlyHint: true, untrustedContentHint: true },
     inputSchema: { type: 'object' as const, properties: {}, additionalProperties: false },
     execute: async () => {
-      const state = getActivationSnapshot();
+      let state = getActivationSnapshot();
       if (state.status === 'inactive') {
         return {
           success: false,
           error: 'The user has not activated MagicPicker. Ask them to click the visible Activate MagicPicker button.',
         };
       }
+      if (state.sessionId && !state.runtimeDetected) {
+        try {
+          await activateLocalRuntime(state.sessionId);
+          markRuntimeDetected(true);
+          state = getActivationSnapshot();
+        } catch (_) {
+          // The extension route may still be available.
+        }
+      }
       return {
-        success: state.status === 'active' && state.extensionDetected,
+        success: state.status === 'active' && (state.extensionDetected || state.runtimeDetected),
         status: state.status,
         sessionId: state.sessionId,
         extensionDetected: state.extensionDetected,
+        runtimeDetected: state.runtimeDetected,
+        codexRuntime: {
+          detected: state.runtimeDetected,
+          requiresApproval: true,
+          launchesExternalBrowser: false,
+          command: 'node scripts/codex-magic-picker.cjs --cdp-endpoint <CODEX_BROWSER_CDP_ENDPOINT>',
+        },
         instruction: state.extensionDetected
           ? 'MagicPicker is active for this browser session.'
-          : 'Consent is recorded; the local extension has not confirmed yet.',
+          : state.runtimeDetected
+          ? 'MagicPicker is active through the Codex CDP runtime.'
+          : 'Run the approved Codex runtime command from codexRuntime.command, then call magic_picker_activate again. The app never launches a browser or installs an extension by itself.',
       };
+    },
+  };
+
+  const tabsTool = {
+    name: TABS_TOOL_NAME,
+    title: 'List browser tabs available to MagicPicker',
+    description: [
+      'List the tabs in the currently activated MagicPicker browser session.',
+      'Use the returned tabId to target magic_picker_attach in another tab.',
+      'Only tab metadata is returned; page contents, cookies, and credentials are not read.',
+    ].join(' '),
+    annotations: { readOnlyHint: true, untrustedContentHint: true },
+    inputSchema: { type: 'object' as const, properties: {}, additionalProperties: false },
+    execute: async () => {
+      const state = getActivationSnapshot();
+      if (state.status === 'inactive') {
+        return { success: false, error: 'Activate MagicPicker from the visible control page first.' };
+      }
+      try {
+        return await requestControlOperation('list-tabs');
+      } catch (error) {
+        return { success: false, error: error instanceof Error ? error.message : String(error) };
+      }
+    },
+  };
+
+  const attachTool = {
+    name: ATTACH_TOOL_NAME,
+    title: 'Prepare an exact file for an upload in any browser tab',
+    description: [
+      'Prepare the exact local file requested by the user for an HTML file input.',
+      'Call magic_picker_tabs first when the upload is in another tab and pass its targetTabId.',
+      'After success, click the matching file input in that tab. Only that prepared click is handled; ordinary clicks remain native.',
+    ].join(' '),
+    annotations: { readOnlyHint: false, untrustedContentHint: true },
+    inputSchema,
+    execute: async (input: Record<string, unknown>) => {
+      const state = getActivationSnapshot();
+      if (state.status === 'inactive') {
+        return { success: false, error: 'Activate MagicPicker from the visible control page first.' };
+      }
+      try {
+        return await requestControlOperation('attach', input);
+      } catch (error) {
+        return { success: false, error: error instanceof Error ? error.message : String(error) };
+      }
     },
   };
 
   try {
     await Promise.resolve(modelContext.registerTool(tool));
-    // Backwards-compatible alias for existing demos and discovered sessions.
-    await Promise.resolve(modelContext.registerTool({ ...tool, name: TOOL_NAME }));
     await Promise.resolve(modelContext.registerTool(activationTool));
+    await Promise.resolve(modelContext.registerTool(tabsTool));
+    await Promise.resolve(modelContext.registerTool(attachTool));
     registered = true;
     registrationMode = modelContext.__magicPickerPolyfill ? 'polyfill' : 'native';
     window.dispatchEvent(new Event('magic-picker:registered'));
-    console.log(`✅ ${READ_TOOL_NAME} + ${TOOL_NAME} registered | Dir: ${getDirectoryName() || 'not connected'}`);
+    console.log(`✅ ${READ_TOOL_NAME} + ${TABS_TOOL_NAME} + ${ATTACH_TOOL_NAME} registered | Dir: ${getDirectoryName() || 'not connected'}`);
     return true;
   } catch (error) {
     console.error('❌ Registration failed:', error);
@@ -200,4 +292,4 @@ export function isMagicPickerRegistered(): boolean { return registered; }
 export function getRegistrationMode(): string { return registrationMode; }
 export function getDetectedPlatform(): string { return detectedPlatform; }
 export { hasDirectoryPermission, getDirectoryName, selectDirectory };
-export const magicPickerToolName = TOOL_NAME;
+export const magicPickerToolName = READ_TOOL_NAME;

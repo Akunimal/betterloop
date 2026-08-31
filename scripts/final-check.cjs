@@ -21,6 +21,7 @@ const requiredFiles = [
   'src/webmcp/polyfill.ts',
   'src/state/fileResolver.ts',
   'src/state/activation.ts',
+  'src/webmcp/codexRuntime.ts',
   'src/components/BridgeStatus.tsx',
   'src/components/ActivationPanel.tsx',
   'src/components/DirectorySetup.tsx',
@@ -32,7 +33,8 @@ const requiredFiles = [
   'extension/background.js',
   'public/magic.svg',
   'public/agent-demo.html',
-  'public/extension.zip'
+  'public/extension.zip',
+  'scripts/codex-magic-picker.cjs'
 ];
 
 let allGood = true;
@@ -68,6 +70,8 @@ const sourceChecks = [
   ['safe normal click fallback', /Normal user clicks retain native picker behavior/.test(fs.readFileSync('extension/content.js', 'utf8'))],
   ['temporary activation session', /SESSION_TTL_MS/.test(fs.readFileSync('extension/background.js', 'utf8')) && /control-heartbeat/.test(fs.readFileSync('extension/content.js', 'utf8'))],
   ['dormant outside session', /sessionActive = false/.test(fs.readFileSync('extension/content.js', 'utf8')) && /get-session-state/.test(fs.readFileSync('extension/content.js', 'utf8'))],
+  ['cross-tab control operations', /control-operation/.test(fs.readFileSync('extension/background.js', 'utf8')) && /targetTabId/.test(fs.readFileSync('src/webmcp/magicPickerTool.ts', 'utf8'))],
+  ['Codex CDP runtime', /DOM\.setFileInputFiles/.test(fs.readFileSync('scripts/codex-magic-picker.cjs', 'utf8')) && /CODEX_BROWSER_CDP_ENDPOINT/.test(fs.readFileSync('scripts/codex-magic-picker.cjs', 'utf8'))],
   ['no dead interceptor', !fs.existsSync('extension/interceptor.js')]
 ];
 for (const [label, ok] of sourceChecks) {

@@ -54,7 +54,8 @@
         multiple: { type: 'boolean', description: 'Whether the target HTML file input accepts multiple files.' },
         projectDir: { type: 'string', description: 'Optional absolute project directory used when path is relative.' },
         inputSelector: { type: 'string', description: 'Optional CSS selector for the target file input.' },
-        autoAttach: { type: 'boolean', description: 'If true, attach as soon as the file is ready; otherwise call this before clicking upload.' }
+        autoAttach: { type: 'boolean', description: 'If true, attach as soon as the file is ready; otherwise call this before clicking upload.' },
+        targetTabId: { type: 'number', description: 'Optional tab id returned by magic_picker_tabs when the upload is in another browser tab.' }
       },
       required: ['path']
     };
@@ -70,7 +71,7 @@
     var attachTool = {
       name: 'magic_picker_attach',
       title: 'Prepare an exact file for this tab upload',
-      description: 'Prepare the exact local file requested by the user for an HTML file upload in this tab. Call this before clicking the upload control, wait for success, then click the file input. MagicPicker prevents the native picker only for that prepared request; normal clicks remain normal.',
+      description: 'Prepare the exact local file requested by the user for an HTML file upload. Use targetTabId from magic_picker_tabs for another tab, wait for success, then click that tab file input. MagicPicker prevents the native picker only for that prepared request; normal clicks remain normal.',
       inputSchema: fileSchema,
       annotations: { readOnlyHint: false, untrustedContentHint: true },
       execute: function (input) { return request('attach', input); }

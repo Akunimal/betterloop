@@ -99,6 +99,25 @@
       return;
     }
 
+    // Control-page operations (tab listing and cross-tab file preparation)
+    // are only accepted by the background after it verifies the live session
+    // and the sender tab is the activated control page.
+    if (message.source === PAGE_SOURCE && message.type === 'bridge-request') {
+      sendBackground({
+        type: 'control-operation',
+        requestId: message.requestId,
+        operation: message.operation,
+        params: message.params || {},
+      }, function (response) {
+        postToPage({
+          type: 'bridge-response',
+          requestId: message.requestId,
+          result: response || { success: false, error: 'MagicPicker bridge did not answer.' },
+        });
+      });
+      return;
+    }
+
     if (message.source === PAGE_SOURCE && message.type === 'resolve-file-response') {
       sendBackground({ type: 'control-response', requestId: message.requestId, result: message.result }, function () {});
     }

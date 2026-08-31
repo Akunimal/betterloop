@@ -5,6 +5,8 @@
  * closing the control page, or losing the heartbeat ends the session.
  */
 
+import { activateLocalRuntime, deactivateLocalRuntime, heartbeatLocalRuntime } from '../webmcp/codexRuntime';
+
 export type ActivationStatus = 'inactive' | 'active' | 'degraded';
 
 export interface ActivationSnapshot {
@@ -13,6 +15,7 @@ export interface ActivationSnapshot {
   activatedAt: number | null;
   expiresAt: number | null;
   extensionDetected: boolean;
+  runtimeDetected: boolean;
   controlTabId: number | null;
   reason?: string;
 }
@@ -28,6 +31,7 @@ let snapshot: ActivationSnapshot = {
   activatedAt: null,
   expiresAt: null,
   extensionDetected: false,
+  runtimeDetected: false,
   controlTabId: null,
 };
 
@@ -62,10 +66,17 @@ function sendHeartbeat(): void {
     sessionId: snapshot.sessionId,
     expiresAt: snapshot.expiresAt,
   });
+  void heartbeatLocalRuntime(snapshot.sessionId)
+    .then(() => markRuntimeDetected(true))
+    .catch(() => undefined);
 }
 
 export function getActivationSnapshot(): ActivationSnapshot {
   return snapshot;
+}
+
+export function markRuntimeDetected(detected: boolean, reason?: string): void {
+  publish({ runtimeDetected: detected, reason: reason || snapshot.reason });
 }
 
 /** Start a session after the user has clicked the explicit consent button. */
@@ -88,6 +99,9 @@ export function activateMagicPicker(): ActivationSnapshot {
     expiresAt: now + 60_000,
   });
   sendHeartbeat();
+  void activateLocalRuntime(sessionId)
+    .then(() => markRuntimeDetected(true))
+    .catch(() => markRuntimeDetected(false));
   heartbeatTimer = window.setInterval(() => {
     publish({ expiresAt: Date.now() + 60_000 });
     sendHeartbeat();
@@ -100,6 +114,7 @@ export function deactivateMagicPicker(reason = 'User deactivated MagicPicker'): 
   stopHeartbeat();
   if (snapshot.sessionId) {
     send({ type: 'control-deactivate', sessionId: snapshot.sessionId, reason });
+    void deactivateLocalRuntime(snapshot.sessionId).catch(() => undefined);
   }
   publish({
     status: 'inactive',
@@ -143,6 +158,9 @@ export function announceControlPage(): void {
 }
 
 window.addEventListener('pagehide', () => {
-  if (snapshot.sessionId) send({ type: 'control-deactivate', sessionId: snapshot.sessionId, reason: 'Control page closed or navigated' });
+  if (snapshot.sessionId) {
+    send({ type: 'control-deactivate', sessionId: snapshot.sessionId, reason: 'Control page closed or navigated' });
+    void deactivateLocalRuntime(snapshot.sessionId).catch(() => undefined);
+  }
   stopHeartbeat();
 });

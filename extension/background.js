@@ -326,22 +326,52 @@
     if (!sender.tab || sender.tab.id == null) throw new Error('The request did not originate from a browser tab.');
     if (!sessionIsActive()) throw new Error('MagicPicker is inactive. Open the control page and click Activate MagicPicker first.');
     var options = message.params && typeof message.params === 'object' ? message.params : {};
-    if (!options.path || typeof options.path !== 'string') throw new Error('magic_picker requires the exact file path in params.path.');
+    if (!options.path || typeof options.path !== 'string') throw new Error('MagicPicker requires the exact file path in params.path.');
     var forAttach = message.operation === 'attach';
     var result = await resolveFile(options, forAttach);
     if (!result.success) return result;
 
     if (forAttach) {
-      var file = result.files ? { files: result.files } : result;
+      var targetTabId = sender.tab.id;
+      if (options.targetTabId !== undefined && options.targetTabId !== null && options.targetTabId !== '') {
+        var parsedTargetTabId = Number(options.targetTabId);
+        if (!Number.isInteger(parsedTargetTabId) || parsedTargetTabId < 0) throw new Error('targetTabId must be a valid browser tab id returned by magic_picker_tabs.');
+        targetTabId = parsedTargetTabId;
+      }
       await new Promise(function (resolve, reject) {
-        chrome.tabs.sendMessage(sender.tab.id, { type: 'file-ready', requestId: message.requestId, file: file, inputSelector: options.inputSelector || '', autoAttach: options.autoAttach === true }, function () {
-          if (chrome.runtime.lastError) reject(new Error('Target tab cannot receive the prepared file. Reload it with the extension enabled.'));
+        chrome.tabs.get(targetTabId, function () {
+          if (chrome.runtime.lastError) reject(new Error('The target browser tab is no longer available. Call magic_picker_tabs again.'));
           else resolve();
         });
       });
-      return { success: true, queued: options.autoAttach !== true, attached: options.autoAttach === true, fileName: result.fileName, fileSize: result.fileSize, fileType: result.fileType, requestId: message.requestId, instruction: options.autoAttach === true ? 'File attached.' : 'File prepared. Click the target file input now.' };
+      var file = result.files ? { files: result.files } : result;
+      await new Promise(function (resolve, reject) {
+        chrome.tabs.sendMessage(targetTabId, { type: 'file-ready', requestId: message.requestId, file: file, inputSelector: options.inputSelector || '', autoAttach: options.autoAttach === true }, function () {
+          if (chrome.runtime.lastError) reject(new Error('Target tab cannot receive the prepared file. Ensure it is a normal web page in the activated Chromium session.'));
+          else resolve();
+        });
+      });
+      return { success: true, queued: options.autoAttach !== true, attached: options.autoAttach === true, targetTabId: targetTabId, fileName: result.fileName, fileSize: result.fileSize, fileType: result.fileType, requestId: message.requestId, instruction: options.autoAttach === true ? 'File attached in the target tab.' : 'File prepared in the target tab. Click its matching file input now.' };
     }
     return result;
+  }
+
+  function listBrowserTabs() {
+    return new Promise(function (resolve) {
+      chrome.tabs.query({}, function (tabs) {
+        var safeTabs = (tabs || []).filter(function (tab) { return tab.id != null; }).map(function (tab) {
+          return {
+            tabId: tab.id,
+            windowId: tab.windowId,
+            active: tab.active === true,
+            status: tab.status || 'unknown',
+            title: tab.title || '',
+            url: tab.url || '',
+          };
+        });
+        resolve({ success: true, tabs: safeTabs, controlTabId: controlTabId, sessionId: activeSession ? activeSession.sessionId : null });
+      });
+    });
   }
 
   chrome.runtime.onMessage.addListener(function (message, sender, sendResponse) {
@@ -378,6 +408,29 @@
         controlPending.delete(message.requestId);
         pending.resolve(message.result);
       }
+      return false;
+    }
+    if (message.type === 'control-operation') {
+      if (!sender.tab || sender.tab.id !== controlTabId || !sessionIsActive()) {
+        sendResponse({ success: false, error: 'MagicPicker is inactive or this is not the activated control page.' });
+        return false;
+      }
+      if (message.operation === 'list-tabs') {
+        listBrowserTabs().then(sendResponse);
+        return true;
+      }
+      if (message.operation === 'attach') {
+        handleAgentRequest({
+          type: 'agent-request',
+          operation: 'attach',
+          requestId: message.requestId || id('attach'),
+          params: message.params || {},
+        }, sender).then(sendResponse).catch(function (error) {
+          sendResponse({ success: false, error: error instanceof Error ? error.message : String(error) });
+        });
+        return true;
+      }
+      sendResponse({ success: false, error: 'Unknown MagicPicker control operation.' });
       return false;
     }
     if (message.type === 'file-attached') return false;

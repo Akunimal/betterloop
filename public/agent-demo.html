@@ -28,16 +28,21 @@
   "input": { "path": "src/App.tsx" }
 }</pre>
 
-    <h2>Local cross-tab tool</h2>
+    <h2>Cross-tab tools</h2>
+    <pre>{
+  "name": "magic_picker_tabs",
+  "description": "List safe metadata for tabs in the active browser session"
+}</pre>
     <pre>{
   "name": "magic_picker_attach",
-  "description": "Prepare an exact file for an HTML upload in this tab",
+  "description": "Prepare an exact file for an HTML upload in a selected tab",
   "input": {
     "path": "C:\\demo\\assets\\logo.png",
-    "accept": "image/*"
+    "accept": "image/*",
+    "targetTabId": "tab-from-magic_picker_tabs"
   }
 }</pre>
-    <p>Call <code>magic_picker_attach</code> before clicking the target file input. The extension cancels only that prepared click. Normal clicks remain normal.</p>
+    <p>Call <code>magic_picker_tabs</code>, then <code>magic_picker_attach</code> before continuing the target upload. In Codex the CDP adapter assigns the file directly; in extension mode only that prepared click is intercepted. Normal clicks remain normal.</p>
 
     <div class="demo-box">
         <h2>One-click session</h2>
@@ -51,8 +56,8 @@
 
     <div class="demo-box">
         <h2>Local setup</h2>
-        <p>For cross-tab uploads, launch the supported Chromium instance with the unpacked MV3 extension and keep the MagicPicker control page open in that same instance. A local MCP gateway can provide the preferred filesystem route; the control page is the browser-local fallback.</p>
-        <p><strong>Future integration studied:</strong> an on-demand Codex/Chromium launcher could load this extension after explicit consent and keep it only for the active session. This is feasible, but not implemented in the current build.</p>
+        <p>For cross-tab uploads inside Codex, the approved local adapter connects to the embedded Chromium CDP endpoint and keeps the handoff inside that browser session. The MV3 extension remains available for Chromium sessions where extensions are already loaded.</p>
+        <p><strong>Consent boundary:</strong> MagicPicker starts only after the visible Activate button. The adapter does not open an external browser, install software, inspect cookies, or monitor the browser after the temporary session ends.</p>
     </div>
 </body>
 </html>

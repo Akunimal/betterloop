@@ -9,6 +9,16 @@ const PAGE_SOURCE = 'magic-picker-page';
 const EXTENSION_SOURCE = 'magic-picker-extension';
 const CONTENT_SOURCE = 'magic-picker-content';
 
+const pendingBridgeRequests = new Map<string, {
+  resolve: (value: unknown) => void;
+  reject: (reason?: unknown) => void;
+  timer: number;
+}>();
+
+function makeRequestId(): string {
+  return `bridge-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
 function emit(detail: Record<string, unknown>): void {
   window.dispatchEvent(new CustomEvent('magic-picker:resolve', { detail }));
 }
@@ -38,6 +48,20 @@ export function startExtensionControlBridge(): void {
     if (!message || (message.source !== EXTENSION_SOURCE && message.source !== CONTENT_SOURCE)) return;
 
     if (handleExtensionActivationMessage(message)) {
+      return;
+    }
+
+    if (message.type === 'bridge-response') {
+      const requestId = typeof message.requestId === 'string' ? message.requestId : '';
+      const pending = pendingBridgeRequests.get(requestId);
+      if (!pending) return;
+      window.clearTimeout(pending.timer);
+      pendingBridgeRequests.delete(requestId);
+      if (message.result && typeof message.result === 'object' && (message.result as Record<string, unknown>).success === false) {
+        pending.reject(new Error(String((message.result as Record<string, unknown>).error || 'MagicPicker bridge request failed')));
+      } else {
+        pending.resolve(message.result);
+      }
       return;
     }
 
@@ -78,4 +102,26 @@ export function startExtensionControlBridge(): void {
   // The extension may be installed, but it remains dormant until the user
   // explicitly activates a session from the visible control page.
   announceControlPage();
+}
+
+/**
+ * Ask the installed extension to perform a control-plane operation.
+ * Only the visible, activated control page can use this path.
+ */
+export function requestExtensionOperation(operation: string, params: Record<string, unknown> = {}): Promise<any> {
+  const requestId = makeRequestId();
+  return new Promise((resolve, reject) => {
+    const timer = window.setTimeout(() => {
+      pendingBridgeRequests.delete(requestId);
+      reject(new Error('MagicPicker extension did not answer. Load it in this Chromium session and activate MagicPicker first.'));
+    }, 2_500);
+    pendingBridgeRequests.set(requestId, { resolve, reject, timer });
+    window.postMessage({
+      source: PAGE_SOURCE,
+      type: 'bridge-request',
+      requestId,
+      operation,
+      params,
+    }, window.location.origin);
+  });
 }
