@@ -24,26 +24,25 @@ export const DirectorySetup: React.FC = () => {
 
   return (
     <div className="dir-card">
-      <h3>Project directory</h3>
-      <p>Connect once. Agents resolve files from here automatically.</p>
-
       {loading ? (
-        <p style={{ color: '#505a70', fontSize: 13 }}>Checking permissions...</p>
+        <p className="dir-status">Checking permissions...</p>
       ) : connected ? (
         <>
           <div className="dir-connected">
-            <span className="dir-connected-icon">✓</span>
+            <span className="dir-connected-icon">⚡</span>
             <span className="dir-connected-name">{dirName}</span>
-            <span className="dir-connected-badge">active</span>
+            <span className="dir-connected-badge">ready</span>
           </div>
-          <button className="dir-btn" onClick={handleConnect} style={{ marginTop: 12 }}>
-            Change directory
-          </button>
+          <p className="dir-hint">Agent passes file path → MagicPicker resolves automatically</p>
         </>
       ) : (
-        <button className="dir-btn" onClick={handleConnect}>
-          📁 Select project directory
-        </button>
+        <>
+          <h3>Connect your project directory</h3>
+          <p>One-time grant. After this, every agent call resolves files automatically.</p>
+          <button className="dir-btn" onClick={handleConnect}>
+            📁 Select project directory
+          </button>
+        </>
       )}
     </div>
   );

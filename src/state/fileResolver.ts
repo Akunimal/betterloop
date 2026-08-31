@@ -249,13 +249,13 @@ export interface ResolveOptions {
   multiple?: boolean;
   maxSizeMB?: number;
   prompt?: string;
+  path?: string;
 }
 
 export async function resolveFile(options: ResolveOptions): Promise<FileResult> {
   const dir = await ensureDirectory();
 
   if (!dir) {
-    // No directory permission — try to get it now
     const granted = await selectDirectory();
     if (!granted) {
       return {
@@ -263,31 +263,46 @@ export async function resolveFile(options: ResolveOptions): Promise<FileResult> 
         error: 'No directory selected. Open MagicPicker and select a project directory first.'
       };
     }
-    return resolveFile(options); // Retry
+    return resolveFile(options);
   }
 
   const accept = options.accept || '*';
   const prompt = options.prompt || '';
+  const path = options.path || '';
   const maxSizeBytes = (options.maxSizeMB || 10) * 1024 * 1024;
 
-  // Strategy 1: If prompt looks like a direct path, try it first
-  const directPath = extractPathFromPrompt(prompt);
-  if (directPath) {
-    const result = await tryReadFile(dir, directPath, maxSizeBytes);
+  // Strategy 1: Direct path parameter (most common — Codex passes path directly)
+  if (path) {
+    const normalized = path.replace(/\\/g, '/').replace(/^\//, '');
+    const result = await tryReadFile(dir, normalized, maxSizeBytes);
     if (result) return result;
+
+    // Try with the original path too (handles absolute Windows paths)
+    if (path !== normalized) {
+      const result2 = await tryReadFile(dir, path, maxSizeBytes);
+      if (result2) return result2;
+    }
   }
 
-  // Strategy 2: Find matching files
-  const candidates = await findFiles(dir, accept, prompt);
+  // Strategy 2: Extract path from prompt text
+  if (prompt) {
+    const directPath = extractPathFromPrompt(prompt);
+    if (directPath) {
+      const result = await tryReadFile(dir, directPath, maxSizeBytes);
+      if (result) return result;
+    }
+  }
+
+  // Strategy 3: Search for matching files
+  const candidates = await findFiles(dir, accept, prompt || path);
 
   if (candidates.length === 0) {
     return {
       success: false,
-      error: `No files found matching "${accept}" in the project directory.`
+      error: `No files found matching "${path || accept}" in the project directory.`
     };
   }
 
-  // Read the best candidate (first match, sorted by relevance)
   const best = candidates[0];
   const result = await tryReadFile(dir, best, maxSizeBytes);
 
@@ -321,8 +336,15 @@ async function tryReadFile(
   path: string,
   maxSizeBytes: number
 ): Promise<FileResult | null> {
-  // Normalize path separators
-  const normalized = path.replace(/\\/g, '/').replace(/^\//, '');
+  // Normalize: convert backslashes, strip drive letter (C:\), strip leading slashes
+  let normalized = path.replace(/\\/g, '/');
+  // Strip drive letter: C:/path → /path
+  normalized = normalized.replace(/^[A-Za-z]:/, '');
+  // Strip leading slashes
+  normalized = normalized.replace(/^\/+/, '');
+
+  if (!normalized) return null;
+
   const parts = normalized.split('/');
 
   const result = await readFileFromHandle(dir, parts);
