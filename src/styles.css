@@ -286,7 +286,7 @@ footer { padding: 40px 0 20px; }
 @media (min-width: 500px) and (max-width: 650px) {
   .dashboard { width: calc(100% - 20px); }
   body { font-size: 12px; }
-  .topbar { padding: 14px 0 12px; }
+  .topbar { padding: 10px 0 9px; }
   .brand-lockup { gap: 9px; }
   .brand-mark { width: 30px; height: 30px; border-radius: 9px; font-size: 20px; }
   .brand-lockup strong { font-size: 15px; }
@@ -294,8 +294,8 @@ footer { padding: 40px 0 20px; }
   .topbar-status { gap: 6px; font-size: 10px; }
   .status-light { width: 6px; height: 6px; }
 
-  .hero-card { gap: 14px; padding: 20px 0 18px; }
-  .hero-copy h1 { margin: 7px 0 10px; font-size: clamp(32px, 7vw, 42px); }
+  .hero-card { gap: 14px; padding: 14px 0 12px; }
+  .hero-copy h1 { margin: 5px 0 8px; font-size: clamp(32px, 7vw, 42px); }
   .hero-copy p { max-height: none; font-size: 10px; line-height: 1.45; }
   .activation-panel { padding: 12px; border-radius: 12px; }
   .activation-heading { margin-bottom: 9px; font-size: 9px; }
@@ -309,7 +309,7 @@ footer { padding: 40px 0 20px; }
   .integration-strip > div { padding: 9px 7px; }
   .strip-label { margin-bottom: 3px; font-size: 7px; letter-spacing: .1em; }
   .integration-strip strong { font-size: 9px; }
-  .notice-card { gap: 9px; margin: 14px 0 17px; padding: 10px 0; }
+  .notice-card { gap: 9px; margin: 10px 0 10px; padding: 8px 0; }
   .notice-icon { width: 16px; height: 16px; font-size: 10px; }
   .notice-card strong { font-size: 10px; }
   .notice-card p { max-height: 36px; margin-top: 3px; font-size: 9px; line-height: 1.4; }
@@ -317,23 +317,23 @@ footer { padding: 40px 0 20px; }
   .section-heading { gap: 10px; }
   .section-heading h2 { margin-top: 4px; font-size: 15px; }
   .feature-count, .tool-count { font-size: 9px; }
-  .feature-grid { gap: 8px; margin-top: 10px; }
+  .feature-grid { gap: 8px; margin-top: 8px; }
   .feature-card { padding: 0 9px; border-radius: 10px; }
   .feature-card-heading { min-height: 43px; padding: 10px 0 7px; }
   .feature-card h3 { font-size: 11px; }
   .feature-card-heading p { display: block; max-height: 23px; overflow: hidden; margin-top: 3px; font-size: 8.5px; line-height: 1.25; }
   .group-dot { width: 6px; height: 6px; margin-top: 3px; }
-  .feature-row { gap: 6px; padding: 7px 0; }
+  .feature-row { gap: 6px; padding: 6px 0; }
   .feature-row strong { font-size: 9.5px; line-height: 1.25; }
   .feature-row small { display: block; max-height: 19px; overflow: hidden; margin-top: 2px; font-size: 8px; line-height: 1.25; }
   .mini-toggle { width: 25px; height: 14px; }
   .mini-toggle span { top: 2px; left: 2px; width: 10px; height: 10px; }
   .feature-row input:checked + .mini-toggle span { left: 13px; }
 
-  .activity-grid { gap: 12px; padding-top: 22px; }
+  .activity-grid { gap: 12px; padding-top: 16px; }
   .text-button { font-size: 9px; }
-  .run-card, .log-card { min-height: 215px; margin-top: 10px; border-radius: 10px; }
-  .empty-run { padding: 22px 12px; }
+  .run-card, .log-card { min-height: 195px; margin-top: 9px; border-radius: 10px; }
+  .empty-run { padding: 18px 12px; }
   .empty-orbit { width: 42px; height: 42px; margin-bottom: 11px; border-radius: 13px; font-size: 24px; }
   .empty-run h3 { font-size: 15px; }
   .empty-run p { margin: 5px 0 13px; font-size: 9px; line-height: 1.4; }
@@ -363,5 +363,5 @@ footer { padding: 40px 0 20px; }
   .timeline-meta strong { font-size: 9px; }
   .timeline-meta time, .timeline-copy p { font-size: 9px; }
   .timeline-copy small { display: block; max-width: 100%; overflow: hidden; font-size: 8px; text-overflow: ellipsis; white-space: nowrap; }
-  footer { gap: 6px; padding: 26px 0 16px; font-size: 8px; }
+  footer { gap: 6px; padding: 16px 0 10px; font-size: 8px; }
 }
