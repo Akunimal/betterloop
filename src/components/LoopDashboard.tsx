@@ -22,6 +22,13 @@ import {
 import type { BetterLoopFeatures, LoopRun } from '../webmcp-types'
 import { ActivityTimeline } from './ActivityTimeline'
 import { unlockAudio, playContinuationTone } from '../ui/sound'
+import {
+  activateBetterLoopHost,
+  deactivateBetterLoopHost,
+  probeBetterLoopHost,
+  syncBetterLoopHost,
+  type BetterLoopHostStatus,
+} from '../host/betterLoopHost'
 
 const featureGroups: Array<{ title: string; description: string; items: Array<{ key: keyof BetterLoopFeatures; label: string; detail: string }> }> = [
   {
@@ -86,10 +93,13 @@ export function LoopDashboard() {
   const [registered, setRegistered] = useState(isBetterLoopRegistered())
   const [mode, setMode] = useState(getBetterLoopRegistrationMode())
   const [hookReady, setHookReady] = useState(isBetterLoopHookReady())
+  const [hostStatus, setHostStatus] = useState<BetterLoopHostStatus>({ success: false, hostConnected: false, active: false, mode: 'unavailable' })
   const [message, setMessage] = useState('')
   const lastEventId = useRef<string | null>(null)
   const enabled = store.settings.enabled
   const features = store.settings.features
+  const viewRun = run ?? hostStatus.run ?? null
+  const hostRunVisible = !run && Boolean(hostStatus.run)
   const activeFeatureCount = enabled ? Object.values(features).filter(Boolean).length : 0
   const toolNames = useMemo(() => getBetterLoopToolNames(), [])
 
@@ -109,20 +119,45 @@ export function LoopDashboard() {
   }, [])
 
   useEffect(() => {
-    const latest = run ? run.events[run.events.length - 1] : undefined
+    const latest = viewRun ? viewRun.events[viewRun.events.length - 1] : undefined
     if (!latest || latest.id === lastEventId.current) return
     lastEventId.current = latest.id
     if (features.soundAlerts && latest.type === 'resumed') playContinuationTone()
-  }, [run, features.soundAlerts])
+  }, [viewRun, features.soundAlerts])
+
+  useEffect(() => {
+    const onHostStatus = (event: Event) => {
+      const detail = (event as CustomEvent<BetterLoopHostStatus>).detail
+      if (detail) setHostStatus(detail)
+    }
+    window.addEventListener('betterloop:host-status', onHostStatus)
+    void probeBetterLoopHost().then(setHostStatus)
+    return () => window.removeEventListener('betterloop:host-status', onHostStatus)
+  }, [])
+
+  useEffect(() => {
+    if (!enabled || !hostStatus.active) return
+    const poll = window.setInterval(() => {
+      void probeBetterLoopHost().then(setHostStatus)
+    }, 2_000)
+    return () => window.clearInterval(poll)
+  }, [enabled, hostStatus.active])
 
   const toggleEnabled = async () => {
     const next = !enabled
     if (next) {
       unlockAudio()
-      updateSettings({ enabled: true })
+      const nextSettings = updateSettings({ enabled: true })
+      const host = await activateBetterLoopHost(nextSettings.features)
+      setHostStatus(host)
       const result = await registerBetterLoopTools()
-      setMessage(result.count ? 'BetterLoop is live. Codex can discover the continuity tools on this page.' : 'BetterLoop is on, but this browser did not expose a WebMCP context.')
+      setMessage(host.active
+        ? 'BetterLoop is live. The Luna-compatible host MCP is connected for this temporary session.'
+        : result.count
+          ? 'BetterLoop is live. Codex can discover the continuity tools on this page.'
+          : 'BetterLoop is on. Restart or reopen Codex to connect the host MCP.')
     } else {
+      await deactivateBetterLoopHost()
       unregisterBetterLoopTools()
       updateSettings({ enabled: false })
       setMessage('BetterLoop is off. No continuity tools are exposed.')
@@ -130,7 +165,9 @@ export function LoopDashboard() {
   }
 
   const setFeature = (key: keyof BetterLoopFeatures, value: boolean) => {
-    updateSettings({ features: { ...features, [key]: value } })
+    const nextFeatures = { ...features, [key]: value }
+    updateSettings({ features: nextFeatures })
+    void syncBetterLoopHost(nextFeatures)
     setMessage(value ? featureLabel(key) + ' enabled.' : featureLabel(key) + ' disabled.')
   }
 
@@ -216,15 +253,24 @@ export function LoopDashboard() {
         <section className="integration-strip">
           <div><span className="strip-label">WebMCP</span><strong>{registered ? 'Tools registered' : 'Waiting for activation'}</strong></div>
           <div><span className="strip-label">Mode</span><strong>{mode === 'polyfill' ? 'Local demo bridge' : mode === 'native' ? 'Native site tools' : 'Unavailable'}</strong></div>
+          <div><span className="strip-label">Host MCP</span><strong>{!enabled ? 'Waiting for activation' : hostStatus.active ? 'Connected / Luna ready' : hostStatus.hostConnected ? 'Connected / dormant' : 'Not connected / restart Codex'}</strong></div>
           <div><span className="strip-label">Codex hook</span><strong>{!enabled ? 'Waiting for activation' : hookReady ? 'Ready / Codex confirmed' : 'Not ready / restart Codex'}</strong></div>
         </section>
 
-        <section className={'notice-card hook-banner ' + (!enabled ? 'is-idle' : hookReady ? 'is-ready' : 'is-pending')} role={enabled && !hookReady ? 'alert' : undefined}>
-          <span className="notice-icon">{!enabled ? 'i' : hookReady ? '✓' : '!'}</span>
+        <section className={'notice-card hook-banner ' + (!enabled ? 'is-idle' : (hookReady || hostStatus.active) ? 'is-ready' : 'is-pending')} role={enabled && !hookReady && !hostStatus.active ? 'alert' : undefined}>
+          <span className="notice-icon">{!enabled ? 'i' : (hookReady || hostStatus.active) ? '✓' : '!'}</span>
           <div>
-            <strong>{!enabled ? 'One-click activation, host-level continuation.' : hookReady ? 'READY: Codex confirmed the BetterLoop hook.' : 'NOT READY: Codex still needs to load the BetterLoop hook.'}</strong>
+            <strong>{!enabled
+              ? 'One-click activation, host-level continuation.'
+              : hostStatus.active && !hookReady
+                ? 'READY: Luna-compatible BetterLoop MCP is connected.'
+                : hookReady
+                  ? 'READY: Codex confirmed the BetterLoop hook.'
+                  : 'NOT READY: Codex still needs to load the BetterLoop hook.'}</strong>
             <p>{!enabled
-              ? 'After the ON click, the page exposes WebMCP tools for this session. Codex then checks the project hook and confirms readiness through the BetterLoop tool.'
+              ? 'After the ON click, the page exposes WebMCP tools and asks the local BetterLoop MCP to open a temporary host session.'
+              : hostStatus.active && !hookReady
+                ? 'The local STDIO MCP is connected, so Luna can use BetterLoop now even without native WebMCP. The optional Stop hook still needs its normal Codex trust if you want automatic turn blocking.'
               : hookReady
                 ? 'Codex delivered the trusted SessionStart hook signal and confirmed it through WebMCP. Automatic “Continue” and the “Is the job 100% done?” check are ready for this page session.'
                 : 'WebMCP is active on this page, but automatic “Continue” and the “Is the job 100% done?” check will not run until Codex trusts the project hook, receives its SessionStart signal, and confirms it here. Review the hook, then restart or reopen Codex so the change is loaded.'}</p>
@@ -252,23 +298,25 @@ export function LoopDashboard() {
         <section className="run-section">
           <div className="section-heading"><div><span className="eyebrow">LIVE RUN</span><h2>Proof, pause, continue</h2></div><button className="text-button" type="button" onClick={clearRuns}>Clear log</button></div>
           <div className="run-card">
-            {!run ? (
+            {!viewRun ? (
               <div className="empty-run"><div className="empty-orbit">↻</div><h3>No active run</h3><p>Start the guided demo to see verification fail, quota pause, recovery, and the final 100% check.</p><button className="primary-button" type="button" onClick={startDemo}>Start guided demo <span>→</span></button></div>
             ) : (
               <>
-                <div className="run-header"><div><span className="eyebrow">RUN {run.runId.slice(-8).toUpperCase()}</span><h3>{run.goal}</h3></div><span className={'run-status status-' + run.status}>{statusLabel(run.status)}</span></div>
-                <div className="run-progress"><div className="progress-label"><span>{run.currentStep}</span><span>{run.completionChecks.filter((check) => check.passed).length}/{run.completionChecks.length || 1} checks passed</span></div><div className="progress-track"><span style={{ width: (run.completionChecks.length ? Math.round((run.completionChecks.filter((check) => check.passed).length / run.completionChecks.length) * 100) : 10) + '%' }} /></div></div>
-                <div className="next-action"><span className="action-kicker">NEXT ACTION</span><strong>{run.nextAction}</strong>{run.status === 'waiting_for_quota' && <small>{formatCountdown(run.expectedResumeAt)} · default recovery window: 5 hours</small>}</div>
-                <div className="check-list">{run.completionChecks.map((check) => <div className="check-row" key={check.id}><span className={'check-icon ' + (check.passed ? 'passed' : 'pending')}>{check.passed ? '✓' : '·'}</span><div><strong>{check.criterion}</strong><small>{check.evidence}</small></div></div>)}</div>
-                <div className="run-actions"><button className="secondary-button" type="button" onClick={markIncomplete}>Needs more work</button><button className="primary-button" type="button" onClick={markComplete}>Mark 100% done <span>→</span></button><button className="secondary-button" type="button" onClick={simulateQuota}>Simulate quota</button><button className="secondary-button" type="button" onClick={quotaAvailable}>Quota available</button>{run.status === 'waiting_for_quota' && !features.autoContinue && <button className="secondary-button" type="button" onClick={resumeManually}>Resume manually</button>}</div>
+                <div className="run-header"><div><span className="eyebrow">{hostRunVisible ? 'CODEX HOST RUN' : 'RUN'} {viewRun.runId.slice(-8).toUpperCase()}</span><h3>{viewRun.goal}</h3></div><span className={'run-status status-' + viewRun.status}>{statusLabel(viewRun.status)}</span></div>
+                <div className="run-progress"><div className="progress-label"><span>{viewRun.currentStep}</span><span>{viewRun.completionChecks.filter((check) => check.passed).length}/{viewRun.completionChecks.length || 1} checks passed</span></div><div className="progress-track"><span style={{ width: (viewRun.completionChecks.length ? Math.round((viewRun.completionChecks.filter((check) => check.passed).length / viewRun.completionChecks.length) * 100) : 10) + '%' }} /></div></div>
+                <div className="next-action"><span className="action-kicker">NEXT ACTION</span><strong>{viewRun.nextAction}</strong>{viewRun.status === 'waiting_for_quota' && <small>{formatCountdown(viewRun.expectedResumeAt)} · default recovery window: 5 hours</small>}</div>
+                <div className="check-list">{viewRun.completionChecks.map((check) => <div className="check-row" key={check.id}><span className={'check-icon ' + (check.passed ? 'passed' : 'pending')}>{check.passed ? '✓' : '·'}</span><div><strong>{check.criterion}</strong><small>{check.evidence}</small></div></div>)}</div>
+                {hostRunVisible
+                  ? <div className="host-run-note">Codex is controlling this run through the host MCP. This panel is a live visual log of its checkpoints, verification, blockers, and next action.</div>
+                  : <div className="run-actions"><button className="secondary-button" type="button" onClick={markIncomplete}>Needs more work</button><button className="primary-button" type="button" onClick={markComplete}>Mark 100% done <span>→</span></button><button className="secondary-button" type="button" onClick={simulateQuota}>Simulate quota</button><button className="secondary-button" type="button" onClick={quotaAvailable}>Quota available</button>{viewRun.status === 'waiting_for_quota' && !features.autoContinue && <button className="secondary-button" type="button" onClick={resumeManually}>Resume manually</button>}</div>}
               </>
             )}
           </div>
         </section>
 
         <section className="log-section">
-          <div className="section-heading"><div><span className="eyebrow">OBSERVABILITY</span><h2>What BetterLoop sees</h2></div><span className="tool-count">{toolNames.length} site tools</span></div>
-          <div className="log-card">{features.activityLog && run ? <ActivityTimeline events={run.events} /> : <p className="muted-copy">{features.activityLog ? 'Start a run to populate the visual log.' : 'Activity log is off.'}</p>}</div>
+          <div className="section-heading"><div><span className="eyebrow">OBSERVABILITY</span><h2>What BetterLoop sees</h2></div><span className="tool-count">{toolNames.length} page tools · 10 host tools</span></div>
+          <div className="log-card">{features.activityLog && viewRun ? <ActivityTimeline events={viewRun.events} /> : <p className="muted-copy">{features.activityLog ? 'Start a run to populate the visual log.' : 'Activity log is off.'}</p>}</div>
         </section>
 
         {message && <div className="toast" role="status">{message}</div>}

@@ -8,22 +8,24 @@ The app is a polished WebMCP demo for agent continuity. The old file-transfer pr
 
 - BetterLoop rebrand in UI, metadata, package name, demo copy, and docs.
 - Explicit ON/OFF activation with default OFF.
-- Native WebMCP registration through document.modelContext.
+- Native WebMCP registration through document.modelContext when the Codex host exposes Site Tools.
 - Local WebMCP polyfill for visible demos outside a native host.
-- Nine continuity tools, including a Codex hook-readiness handshake, for start, checkpoints, completion evidence, research-first blockers, quota recovery, resume, finish, and status.
+- Nine page continuity tools plus a project-scoped, model-compatible STDIO MCP host with the same continuity contract.
 - Compact control surface with grouped feature toggles.
 - Optional Auto-continue and “Is the job 100% done?” behavior.
 - Five-hour quota recovery heuristic without blocking the browser.
 - Optional browser sound alert unlocked by the activation gesture.
 - Local visual event timeline.
 - Project-local Codex Stop hook with stop_hook_active loop protection.
-- Explicit post-activation `NOT READY` banner that becomes `READY` only after Codex's trusted `SessionStart` hook tells the model to confirm through `betterloop_hook_ready`; otherwise it tells the user to trust/load the hook and restart or reopen Codex.
+- Capability-aware post-activation status: native WebMCP, connected host MCP, or a truthful restart-required state.
 
 ## Known boundary
 
-WebMCP gives a page a discoverable tool contract; the page does not get arbitrary control over Codex’s host process. The Stop hook is the supported route for synchronous turn continuation, but project hooks must be trusted by Codex and can require a new session. A web page cannot silently write Codex configuration, inspect private quota state, or wake a closed session. BetterLoop now lets Codex perform the readiness check: a trusted `SessionStart` hook injects context, and Codex confirms the result by calling `betterloop_hook_ready`. Until that handshake arrives, the dashboard stays `NOT READY`.
+WebMCP gives a page a discoverable tool contract; the page does not get arbitrary control over Codex’s host process. The supported fallback is now a project-scoped STDIO MCP server. Codex starts it from `.codex/config.toml`, while the visible page controls a short-lived activation session through the server’s loopback control plane. The server refuses continuity actions until that consent arrives and clears the session when the heartbeat expires.
 
-The next production step would be a small local host/App Server bridge that synchronizes the page’s activation state with the hook and receives real Codex lifecycle events. It is intentionally documented as a follow-up, not presented as implemented.
+The Stop hook consults the host session when the MCP process is available. This keeps BetterLoop inert while the page is OFF and applies the selected toggles while it is ON. Native WebMCP remains the preferred path; the standard local MCP is the compatibility path for hosts where native Site Tools are unavailable, including the current Luna configuration. A different MCP-capable model can consume the same server contract.
+
+The remaining boundary is honest and intentional: a page cannot silently edit Codex’s global configuration or hot-reload the tool catalog of an already-running session. The project MCP is reviewable and may require one trust/restart step. After that, activation is one visible button and the MCP process lasts only as long as the Codex session.
 
 ## Files
 
@@ -32,5 +34,7 @@ The next production step would be a small local host/App Server bridge that sync
 - src/webmcp/betterLoopTools.ts — WebMCP tools and registration.
 - src/webmcp/polyfill.ts — native-context detection and demo fallback.
 - scripts/betterloop-stop.cjs — synchronous Codex Stop hook.
+- scripts/betterloop-mcp.cjs — Luna-compatible STDIO MCP server and temporary localhost activation bridge.
 - .codex/hooks.json — project hook definition.
+- .codex/config.toml — project-scoped MCP connection; intentionally not global.
 - .betterloop/config.example.json — optional host hook configuration.

@@ -1,6 +1,6 @@
 # BetterLoop
 
-BetterLoop is a user-activated WebMCP continuity layer for Codex. It helps an agent close the gap between “the response stopped” and “the original job is actually finished”.
+BetterLoop is a user-activated continuity layer for Codex. It uses native WebMCP when the host exposes Site Tools and a project-scoped local MCP fallback when it does not, so the agent can close the gap between “the response stopped” and “the original job is actually finished”.
 
 Live demo: https://betterloop-akunimal.vercel.app
 
@@ -9,6 +9,7 @@ Live demo: https://betterloop-akunimal.vercel.app
 The user opens BetterLoop in Codex’s built-in browser and presses one visible ON button. The page then registers a small set of site tools for the current browser session:
 
 - betterloop_hook_ready — confirm that Codex received the trusted SessionStart hook signal.
+- betterloop_host_status — report whether the Luna-compatible host MCP is connected and whether the user activated the temporary session.
 - betterloop_start — start a run for the exact original request.
 - betterloop_checkpoint — save the current phase and next action.
 - betterloop_verify_completion — check every important outcome with evidence.
@@ -18,7 +19,7 @@ The user opens BetterLoop in Codex’s built-in browser and presses one visible 
 - betterloop_finish — close the run only after verification passes.
 - betterloop_status — expose the current state and selected features.
 
-The dashboard makes the loop visible: active features, current phase, verification criteria, quota countdown, and a local event timeline. After activation it shows a clear `NOT READY` banner until Codex confirms the trusted host hook through `betterloop_hook_ready`; the user is told to review `/hooks` and restart or reopen Codex when required.
+The dashboard makes the loop visible: active features, current phase, verification criteria, quota countdown, host-MCP status, and a local event timeline. After activation it reports the actual channel: native WebMCP, the Luna-compatible host MCP, or a pending Codex restart.
 
 ## The final 100% check
 
@@ -51,7 +52,15 @@ This is deliberately a conservative heuristic, not a claim that every model or a
 
 The page uses document.modelContext.registerTool, the WebMCP site-tool contract. In a WebMCP-capable Codex browser, the tools are discoverable after the user visits the page and activates it. Outside that environment, the app keeps a local polyfill so the public demo remains interactive and testable.
 
-The optional Stop hook is a host-side Codex integration. A webpage cannot silently install a hook, change Codex approval policy, or wake a closed Codex session. Project hooks require Codex trust review and may require opening a new session or restarting the current one. BetterLoop also registers a `SessionStart` hook: when Codex actually loads the trusted hook, it receives host context instructing it to call `betterloop_hook_ready`. The page changes to `READY` only after that Codex confirmation; otherwise it remains `NOT READY`.
+The optional Stop hook is a host-side Codex integration. A webpage cannot silently install a hook, change Codex approval policy, or wake a closed Codex session. Project hooks require Codex trust review and may require opening a new session or restarting the current one. BetterLoop also registers a `SessionStart` hook so Codex can announce the host integration to the model.
+
+### Model-compatible host MCP
+
+The repository includes `scripts/betterloop-mcp.cjs`, a dependency-free STDIO MCP server. `.codex/config.toml` connects it at project scope; Codex starts it when the trusted project session loads. The same process exposes a localhost control plane on `127.0.0.1:8767`. The visible ON button sends a short-lived session id and the selected toggles to that process, and a heartbeat renews it while the page remains open. When the page is OFF or the heartbeat expires, the server remains dormant and its continuity tools refuse to act.
+
+This is the fallback for hosts such as the current Luna Site Tools configuration. The server speaks standard MCP, so another model can use the same tools when its host supports a project/local STDIO MCP; only the `.codex/config.toml` wiring is Codex-specific. It is not a silent global install: the project MCP must be reviewed/trusted and Codex may need one restart or a reopened session. After that one host setup, activation is one visible button and the server works independently of native WebMCP.
+
+For a local smoke test, run `npm run host:mcp` in a terminal and open the page from a local or trusted browser context. For a Codex project, the normal route is the committed `.codex/config.toml`; do not add BetterLoop to the user's global config.
 
 Official references:
 
@@ -88,6 +97,7 @@ or with a local .betterloop/config.json based on config.example.json. The commit
 - The page stores run state locally in the browser.
 - Sound alerts are optional and are unlocked by the ON click. Browsers may suspend audio in a background tab.
 - The local polyfill is a demo bridge; native discovery depends on the browser and model host.
+- The host MCP is connected at the Codex project layer but remains dormant until the user activates the visible page session.
 - Quota timing is an explicit heuristic until a host-level integration reports the real reset.
 - The project hook can request a continuation, but it cannot bypass approvals or guarantee completion by itself.
 

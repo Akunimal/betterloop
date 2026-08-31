@@ -22,7 +22,9 @@ const requiredFiles = [
   'src/components/ActivityTimeline.tsx',
   'src/ui/sound.ts',
   'scripts/betterloop-stop.cjs',
+  'scripts/betterloop-mcp.cjs',
   '.codex/hooks.json',
+  '.codex/config.toml',
   '.betterloop/config.example.json',
 ]
 
@@ -61,15 +63,18 @@ for (const file of obsoleteFiles) check('removed ' + file, !fs.existsSync(path.j
 
 const packageJson = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'))
 check('package name is betterloop', packageJson.name === 'betterloop')
-for (const script of ['dev', 'build', 'preview', 'verify']) check('script:' + script, Boolean(packageJson.scripts?.[script]))
+for (const script of ['dev', 'build', 'preview', 'host:mcp', 'verify']) check('script:' + script, Boolean(packageJson.scripts?.[script]))
 
 const types = fs.readFileSync(path.join(root, 'src/webmcp-types.ts'), 'utf8')
 const store = fs.readFileSync(path.join(root, 'src/state/loopStore.ts'), 'utf8')
 const tools = fs.readFileSync(path.join(root, 'src/webmcp/betterLoopTools.ts'), 'utf8')
 const hook = fs.readFileSync(path.join(root, 'scripts/betterloop-stop.cjs'), 'utf8')
+const mcp = fs.readFileSync(path.join(root, 'scripts/betterloop-mcp.cjs'), 'utf8')
 const hookConfig = JSON.parse(fs.readFileSync(path.join(root, '.codex/hooks.json'), 'utf8'))
+const mcpConfig = fs.readFileSync(path.join(root, '.codex/config.toml'), 'utf8')
 const index = fs.readFileSync(path.join(root, 'index.html'), 'utf8')
 const dashboard = fs.readFileSync(path.join(root, 'src/components/LoopDashboard.tsx'), 'utf8')
+const hostBridge = fs.readFileSync(path.join(root, 'src/host/betterLoopHost.ts'), 'utf8')
 
 for (const tool of [
   'betterloop_hook_ready',
@@ -92,8 +97,13 @@ check('research-first guard', types.includes('researchBeforeBlocking') && tools.
 check('Stop hook loop guard', hook.includes('stop_hook_active') && hook.includes("decision: 'block'"))
 check('SessionStart hook check', hook.includes("hook_event_name === 'SessionStart'") && hook.includes('hookSpecificOutput') && hook.includes('session_start_hook_confirmed'))
 check('Stop hook config shape', Array.isArray(hookConfig.hooks?.Stop) && hookConfig.hooks.Stop[0]?.hooks?.[0]?.type === 'command' && Array.isArray(hookConfig.hooks?.SessionStart) && hookConfig.hooks.SessionStart[0]?.hooks?.[0]?.type === 'command')
+check('host MCP server contract', mcp.includes("message.method === 'initialize'") && mcp.includes("message.method === 'tools/list'") && mcp.includes("message.method === 'tools/call'") && mcp.includes("name: 'betterloop_host_status'"))
+check('host MCP temporary consent gate', mcp.includes("url.pathname === '/activate'") && mcp.includes("url.pathname === '/heartbeat'") && mcp.includes("url.pathname === '/deactivate'") && mcp.includes('visible BetterLoop page') && mcp.includes('if (!origin) return false'))
+check('host run reaches visual log', mcp.includes('run: isActive() ? hostSession.run : null') && hostBridge.includes('run?: LoopRun | null') && dashboard.includes('CODEX HOST RUN') && dashboard.includes('viewRun.events'))
+check('project-scoped MCP config', mcpConfig.includes('[mcp_servers.betterloop]') && mcpConfig.includes('scripts/betterloop-mcp.cjs') && mcpConfig.includes('default_tools_approval_mode'))
+check('hook honors host activation', hook.includes('HOST_STATUS_URL') && hook.includes('hostStatus.active !== true') && hook.includes('hostFeatures'))
 check('BetterLoop metadata', index.includes('betterloop-control') && index.includes('<title>BetterLoop'))
-check('hook readiness banner', dashboard.includes('NOT READY') && dashboard.includes('READY: Codex confirmed') && dashboard.includes('restart or reopen Codex') && tools.includes("name: 'betterloop_hook_ready'"))
+check('hook readiness banner', dashboard.includes('NOT READY') && dashboard.includes('READY: Codex confirmed') && dashboard.includes('Luna-compatible host MCP') && dashboard.includes('restart or reopen Codex') && tools.includes("name: 'betterloop_hook_ready'"))
 
 const activePaths = [
   'README.md',

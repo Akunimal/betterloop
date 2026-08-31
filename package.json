@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "verify": "npm run build && npx tsc --noEmit && node scripts/final-check.cjs && node scripts/betterloop-stop.cjs --self-test"
+    "host:mcp": "node scripts/betterloop-mcp.cjs",
+    "verify": "npm run build && npx tsc --noEmit && node scripts/final-check.cjs && node scripts/betterloop-mcp.cjs --self-test && node scripts/betterloop-stop.cjs --self-test"
   },
   "dependencies": {
     "react": "^18.3.1",
