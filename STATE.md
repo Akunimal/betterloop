@@ -1,7 +1,7 @@
 # 🪄 Magic Picker — STATE.md
 
 > Documento de estado completo para el hackathon WebMCP.
-> Última actualización: 2026-08-30
+> Última actualización: 2026-08-31
 
 ---
 
