@@ -18,6 +18,9 @@ import { getModelContext, getWebMCPMode } from './polyfill'
 
 let registered = false
 let controllers: AbortController[] = []
+let hostHookReady = false
+
+const SESSION_START_PROOF = 'session_start_hook_confirmed'
 
 const text = (value: unknown, fallback = ''): string => typeof value === 'string' ? value : fallback
 const bool = (value: unknown): boolean => value === true
@@ -82,6 +85,29 @@ function schema(properties: Record<string, unknown>, required: string[] = []) {
 }
 
 const tools: WebMCPTool[] = [
+  {
+    name: 'betterloop_hook_ready',
+    title: 'Confirm Codex hook is loaded',
+    description: 'Call this only after Codex has received BetterLoop’s SessionStart hook context. It confirms to the page that the trusted host hook is loaded; do not call it based on the page alone.',
+    inputSchema: schema({ verification: { type: 'string', enum: [SESSION_START_PROOF], description: 'Exact proof string supplied by the BetterLoop SessionStart hook.' } }, ['verification']),
+    execute: async (input) => {
+      if (!getStore().settings.enabled) return disabledResult('betterloop_hook_ready')
+      if (text(input.verification) !== SESSION_START_PROOF) {
+        return {
+          success: false,
+          hostHookReady: false,
+          message: 'The SessionStart hook proof is missing. Review /hooks, trust the BetterLoop hook, and restart or reopen Codex before confirming readiness.',
+        }
+      }
+      hostHookReady = true
+      window.dispatchEvent(new CustomEvent('betterloop:hook-ready'))
+      return {
+        success: true,
+        hostHookReady: true,
+        message: 'Codex confirmed that the trusted BetterLoop SessionStart hook is loaded. Host-level continuation is ready for this page session.',
+      }
+    },
+  },
   {
     name: 'betterloop_start',
     title: 'Start BetterLoop run',
@@ -218,6 +244,7 @@ const tools: WebMCPTool[] = [
         ...summarize(getRun(text(input.runId) || undefined)),
         features: getStore().settings.features,
         webMCPMode: getWebMCPMode(),
+        hostHookReady,
         registeredTools: tools.map((tool) => tool.name),
       }
     },
@@ -242,6 +269,7 @@ export function unregisterBetterLoopTools(): void {
   controllers.forEach((controller) => controller.abort())
   controllers = []
   registered = false
+  hostHookReady = false
   window.dispatchEvent(new CustomEvent('betterloop:registered'))
 }
 
@@ -255,6 +283,10 @@ export function getBetterLoopToolNames(): string[] {
 
 export function getBetterLoopRegistrationMode(): string {
   return getWebMCPMode()
+}
+
+export function isBetterLoopHookReady(): boolean {
+  return hostHookReady
 }
 
 export function prepareDemoQuota(): LoopRun | null {

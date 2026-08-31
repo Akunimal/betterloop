@@ -12,7 +12,7 @@ Open BetterLoop in Codex’s built-in browser. Press Turn BetterLoop ON.
 
 Point at the warning banner:
 
-“The page is live, but automatic Codex continuation is explicitly marked not ready until the project hook is trusted and loaded. If Codex asks for it, I restart or reopen the session. The web page never pretends it can install that host hook itself.”
+“The page is live, but automatic Codex continuation is explicitly marked not ready until Codex checks the trusted project hook. If Codex asks for `/hooks`, I trust it and restart or reopen the session. Codex then confirms the hook through WebMCP and the banner becomes ready. The web page never pretends it can install that host hook itself.”
 
 ## 0:20 — The control surface
 
@@ -43,7 +43,7 @@ Press Mark 100% done.
 
 Show .codex/hooks.json and scripts/betterloop-stop.cjs.
 
-“The optional Stop hook asks Codex: Is the job 100% done? If Auto-continue is on and Codex trusts the hook, its supported block decision creates a continuation prompt. Until then, the page remains a WebMCP dashboard and clearly tells the user that Codex must load the hook first.”
+“The SessionStart hook is the readiness check. If Codex trusted and loaded it, it receives the instruction to confirm BetterLoop through the page. Only then does the banner become ready. The same trusted hook later asks Codex: Is the job 100% done? If Auto-continue is on, its supported block decision creates a continuation prompt.”
 
 ## 1:05 — Close
 

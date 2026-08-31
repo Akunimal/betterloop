@@ -72,6 +72,7 @@ const index = fs.readFileSync(path.join(root, 'index.html'), 'utf8')
 const dashboard = fs.readFileSync(path.join(root, 'src/components/LoopDashboard.tsx'), 'utf8')
 
 for (const tool of [
+  'betterloop_hook_ready',
   'betterloop_start',
   'betterloop_checkpoint',
   'betterloop_research_blocker',
@@ -89,9 +90,10 @@ check('sound feature', types.includes('soundAlerts') && fs.existsSync(path.join(
 check('five-hour fallback', tools.includes('5 * 60 * 60 * 1000') && hook.includes('quotaAssumptionHours'))
 check('research-first guard', types.includes('researchBeforeBlocking') && tools.includes('needsResearch'))
 check('Stop hook loop guard', hook.includes('stop_hook_active') && hook.includes("decision: 'block'"))
-check('Stop hook config shape', Array.isArray(hookConfig.hooks?.Stop) && hookConfig.hooks.Stop[0]?.hooks?.[0]?.type === 'command')
+check('SessionStart hook check', hook.includes("hook_event_name === 'SessionStart'") && hook.includes('hookSpecificOutput') && hook.includes('session_start_hook_confirmed'))
+check('Stop hook config shape', Array.isArray(hookConfig.hooks?.Stop) && hookConfig.hooks.Stop[0]?.hooks?.[0]?.type === 'command' && Array.isArray(hookConfig.hooks?.SessionStart) && hookConfig.hooks.SessionStart[0]?.hooks?.[0]?.type === 'command')
 check('BetterLoop metadata', index.includes('betterloop-control') && index.includes('<title>BetterLoop'))
-check('hook readiness banner', dashboard.includes('NOT READY') && dashboard.includes('restart or reopen Codex') && dashboard.includes('page cannot load the hook by itself'))
+check('hook readiness banner', dashboard.includes('NOT READY') && dashboard.includes('READY: Codex confirmed') && dashboard.includes('restart or reopen Codex') && tools.includes("name: 'betterloop_hook_ready'"))
 
 const activePaths = [
   'README.md',

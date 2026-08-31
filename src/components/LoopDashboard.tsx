@@ -12,6 +12,7 @@ import {
 import {
   getBetterLoopRegistrationMode,
   getBetterLoopToolNames,
+  isBetterLoopHookReady,
   isBetterLoopRegistered,
   prepareDemoQuota,
   registerBetterLoopTools,
@@ -84,6 +85,7 @@ export function LoopDashboard() {
   const run = store.activeRunId ? store.runs[store.activeRunId] || null : null
   const [registered, setRegistered] = useState(isBetterLoopRegistered())
   const [mode, setMode] = useState(getBetterLoopRegistrationMode())
+  const [hookReady, setHookReady] = useState(isBetterLoopHookReady())
   const [message, setMessage] = useState('')
   const lastEventId = useRef<string | null>(null)
   const enabled = store.settings.enabled
@@ -95,10 +97,15 @@ export function LoopDashboard() {
     const updateRegistration = () => {
       setRegistered(isBetterLoopRegistered())
       setMode(getBetterLoopRegistrationMode())
+      setHookReady(isBetterLoopHookReady())
     }
     window.addEventListener('betterloop:registered', updateRegistration)
+    window.addEventListener('betterloop:hook-ready', updateRegistration)
     updateRegistration()
-    return () => window.removeEventListener('betterloop:registered', updateRegistration)
+    return () => {
+      window.removeEventListener('betterloop:registered', updateRegistration)
+      window.removeEventListener('betterloop:hook-ready', updateRegistration)
+    }
   }, [])
 
   useEffect(() => {
@@ -209,16 +216,18 @@ export function LoopDashboard() {
         <section className="integration-strip">
           <div><span className="strip-label">WebMCP</span><strong>{registered ? 'Tools registered' : 'Waiting for activation'}</strong></div>
           <div><span className="strip-label">Mode</span><strong>{mode === 'polyfill' ? 'Local demo bridge' : mode === 'native' ? 'Native site tools' : 'Unavailable'}</strong></div>
-          <div><span className="strip-label">Codex hook</span><strong>{enabled ? 'Not ready / restart Codex' : 'Waiting for activation'}</strong></div>
+          <div><span className="strip-label">Codex hook</span><strong>{!enabled ? 'Waiting for activation' : hookReady ? 'Ready / Codex confirmed' : 'Not ready / restart Codex'}</strong></div>
         </section>
 
-        <section className={'notice-card hook-banner ' + (enabled ? 'is-pending' : 'is-idle')} role={enabled ? 'alert' : undefined}>
-          <span className="notice-icon">{enabled ? '!' : 'i'}</span>
+        <section className={'notice-card hook-banner ' + (!enabled ? 'is-idle' : hookReady ? 'is-ready' : 'is-pending')} role={enabled && !hookReady ? 'alert' : undefined}>
+          <span className="notice-icon">{!enabled ? 'i' : hookReady ? '✓' : '!'}</span>
           <div>
-            <strong>{enabled ? 'NOT READY: Codex still needs to load the BetterLoop hook.' : 'One-click activation, host-level continuation.'}</strong>
-            <p>{enabled
-              ? 'WebMCP is active on this page, but automatic “Continue” and the “Is the job 100% done?” check will not run until Codex trusts the project hook. Review the hook, then restart or reopen Codex so the change is loaded. The page cannot load the hook by itself.'
-              : 'After the ON click, the page exposes WebMCP tools for this session. The project Stop hook asks “Is the job 100% done?” and can request the next Codex turn after it is trusted and loaded.'}</p>
+            <strong>{!enabled ? 'One-click activation, host-level continuation.' : hookReady ? 'READY: Codex confirmed the BetterLoop hook.' : 'NOT READY: Codex still needs to load the BetterLoop hook.'}</strong>
+            <p>{!enabled
+              ? 'After the ON click, the page exposes WebMCP tools for this session. Codex then checks the project hook and confirms readiness through the BetterLoop tool.'
+              : hookReady
+                ? 'Codex delivered the trusted SessionStart hook signal and confirmed it through WebMCP. Automatic “Continue” and the “Is the job 100% done?” check are ready for this page session.'
+                : 'WebMCP is active on this page, but automatic “Continue” and the “Is the job 100% done?” check will not run until Codex trusts the project hook, receives its SessionStart signal, and confirms it here. Review the hook, then restart or reopen Codex so the change is loaded.'}</p>
           </div>
         </section>
 

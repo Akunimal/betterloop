@@ -43,6 +43,20 @@ function writeOutput(value) {
   process.stdout.write(JSON.stringify(value))
 }
 
+function sessionStartOutput() {
+  return {
+    hookSpecificOutput: {
+      hookEventName: 'SessionStart',
+      additionalContext: [
+        'BetterLoop host hook loaded and trusted for this Codex project.',
+        'This SessionStart signal is the host-side readiness proof.',
+        'If the user has activated BetterLoop in the Codex browser, immediately call the betterloop_hook_ready WebMCP tool with verification "session_start_hook_confirmed".',
+        'Do not claim BetterLoop automatic continuation is ready until that tool call succeeds.',
+      ].join(' '),
+    },
+  }
+}
+
 function main() {
   const input = readInput()
   const config = readConfig(input.cwd || process.cwd())
@@ -50,6 +64,11 @@ function main() {
 
   if (process.env.BETTERLOOP_DISABLED === '1' || config.enabled === false || input.stop_hook_active === true) {
     writeOutput({})
+    return
+  }
+
+  if (input.hook_event_name === 'SessionStart') {
+    writeOutput(sessionStartOutput())
     return
   }
 
