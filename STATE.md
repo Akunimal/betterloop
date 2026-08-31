@@ -7,7 +7,7 @@
 
 ## 📋 Resumen del Proyecto
 
-**Magic Picker** es una tool WebMCP que permite a agentes de IA solicitar archivos a usuarios **sin usar diálogos nativos del sistema operativo**. Resuelve un problema fundamental: los agentes en navegadores sandboxeados NO pueden abrir file pickers nativos.
+**Magic Picker** es una tool WebMCP de human handoff: permite a agentes de IA solicitar archivos mediante una UI controlada por la página, sin pedirle al agente que opere un diálogo nativo del sistema operativo. El alcance deliberadamente concreto es un solo flujo sólido: `magic_picker`.
 
 **Repo:** https://github.com/Akunimal/magicpicker  
 **Autor:** Akunimal  
@@ -65,6 +65,9 @@ MagicPicker/
 ├── .gitignore                    # Ignorar node_modules, dist
 ├── README.md                     # Documentación principal
 ├── SUBMISSION.md                 # Formato de submission al hackathon
+├── VIDEO_SCRIPT.md               # Guion y checklist de grabación <3 min
+├── PICKER_BRIDGE.md              # Frontera de página, host, popups y terminal
+├── LICENSE                       # MIT license visible para el repo público
 ├── STATE.md                      # ← Este archivo
 │
 ├── public/
@@ -77,6 +80,7 @@ MagicPicker/
 └── src/
     ├── main.tsx                  # Entry point React + polyfill
     ├── App.tsx                   # Componente principal
+    ├── styles.css                # Landing y UI responsive
     ├── webmcp-types.ts           # Interfaces TypeScript
     │
     ├── webmcp/
@@ -116,7 +120,7 @@ Estado global singleton con patrón pub/sub:
 - **Clase:** `PickerStateManager`
 - **Estado:** `{ isOpen, options, resolvePromise }`
 - **Métodos:**
-  - `requestFile(options)` → Retorna `Promise<FileResult>`, abre el modal
+  - `requestFile(options, signal?)` → Retorna `Promise<FileResult>`, abre el modal y respeta cancelación
   - `complete(result)` → Resuelve la promise, cierra el modal
   - `subscribe(listener)` → Suscripción a cambios de estado
 - **Flujo:** `requestFile()` crea una Promise, guarda el resolver en estado, el modal la resuelve con `complete()`
@@ -125,8 +129,9 @@ Estado global singleton con patrón pub/sub:
 Registra la tool `magic_picker` en `window.modelContext`:
 
 - **Input Schema:** `accept` (string), `multiple` (boolean), `maxSizeMB` (number), `prompt` (string)
-- **Execute:** Llama a `pickerState.requestFile(options)` y retorna el `FileResult`
-- **Guarda:** Solo se registra si `window.modelContext` existe
+- **Execute:** Llama a `pickerState.requestFile(options, signal)` y retorna el `FileResult`
+- **Registro:** Prefiere `document.modelContext` (API actual) y usa `window.modelContext` como fallback
+- **Cancelación:** Limpia la UI y resuelve con error si WebMCP aborta la ejecución o la página se descarga
 
 ### `src/webmcp/polyfill.ts`
 Polyfill para testing en navegadores sin WebMCP nativo:
@@ -192,7 +197,7 @@ Indicador fijo en esquina inferior derecha:
 | **Promise-based flow** | El agente llama `execute()` y espera el resultado async |
 | **Polyfill incluido** | Permite testing completo sin WebMCP nativo |
 | **Base64 como retorno** | Formato estándar que los agentes pueden procesar directamente |
-| **Inline styles** | Sin dependencias CSS, todo funciona out-of-the-box |
+| **Stylesheet dedicado** | Landing, demo y estados interactivos comparten una interfaz coherente |
 | **Sin routing** | App de una sola página, no necesita navegación |
 | **Vite over CRA** | Build más rápido, mejor DX, ESM nativo |
 
@@ -213,7 +218,10 @@ Indicador fijo en esquina inferior derecha:
 - [x] Panel de testing
 - [x] Consola WebMCP
 - [x] StatusBar
-- [x] Build de producción (154KB)
+- [x] Build de producción
+- [x] Flujo cancelable con `AbortSignal` y `pagehide`
+- [x] Landing pública responsive y página de quickstart para agentes
+- [x] Límite documentado entre UI de página y popups/terminales del host
 - [x] README.md
 - [x] SUBMISSION.md
 - [x] Git init + commit
@@ -293,10 +301,10 @@ node scripts/final-check.cjs
 
 **Script sugerido (3 min):**
 
-1. **0:00-0:30** — Problema: Agentes no pueden abrir file dialogs nativos
+1. **0:00-0:30** — Problema: Agentes no pueden operar file dialogs nativos
 2. **0:30-1:30** — Demo: ChatGPT invoca magic_picker → usuario selecciona → agente recibe base64
 3. **1:30-2:30** — Código: Mostrar registerTool, el flujo Promise, la UI
-4. **2:30-3:00** — Impacto: Nuevos casos de uso para agentes en browsers
+4. **2:30-3:00** — Impacto: Un patrón simple de handoff, con una frontera clara entre página y host
 
 ---
 

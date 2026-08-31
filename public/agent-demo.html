@@ -1,7 +1,8 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Magic Picker - Agent Demo</title>
+    <meta name="description" content="WebMCP quickstart for Magic Picker, a page-owned human handoff for browser agents." />
+    <title>Magic Picker — WebMCP Agent Demo</title>
     <style>
         body { font-family: Arial, sans-serif; max-width: 800px; margin: 40px auto; padding: 20px; }
         .demo-box { background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 8px; padding: 20px; margin: 20px 0; }
@@ -10,18 +11,18 @@
     </style>
 </head>
 <body>
-    <h1>🪄 Magic Picker - Agent Demo</h1>
+    <h1>🪄 Magic Picker — Agent Demo</h1>
 
     <div class="demo-box">
         <h2>For AI Agents</h2>
-        <p>This page demonstrates the Magic Picker WebMCP tool. If you're an AI agent with WebMCP access, you can use this tool to request files from the user.</p>
+        <p>This page demonstrates the <strong>magic_picker</strong> WebMCP tool: a focused human handoff for asking a user to choose a file in page-owned UI.</p>
     </div>
 
     <h2>Available Tool</h2>
     <pre>
 {
   "name": "magic_picker",
-  "description": "Request a file from the user without native OS dialogs",
+  "description": "Ask the user to choose a file in the page UI and return metadata plus base64 data",
   "parameters": {
     "accept": "image/*",
     "multiple": false,
@@ -34,7 +35,7 @@
     <h2>Example Usage</h2>
     <p>If you're ChatGPT or another WebMCP-enabled agent, try this command:</p>
     <pre>
-"Use magic_picker to ask the user for an image file"
+"Use magic_picker to ask me for an image file"
     </pre>
 
     <h2>Expected Result</h2>
@@ -50,7 +51,7 @@
 
     <div class="demo-box">
         <h2>Why This Matters</h2>
-        <p>Before Magic Picker, browser-based AI agents <strong>could not access files</strong> because they couldn't interact with native OS file dialogs. This tool makes file access possible in sandboxed browser environments.</p>
+        <p>Browser agents should not be expected to operate native OS dialogs. Magic Picker gives them a structured request while the person chooses the file. The page does not intercept arbitrary OAuth popups, terminal prompts, or browser chrome.</p>
     </div>
 </body>
 </html>

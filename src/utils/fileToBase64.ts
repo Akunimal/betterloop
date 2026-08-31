@@ -11,13 +11,38 @@ export function fileToBase64(file: File): Promise<string> {
   });
 }
 
-export function validateFile(file: File, maxSizeMB: number = 10): { valid: boolean; error?: string } {
+export function matchesAccept(file: File, accept: string = '*'): boolean {
+  const normalizedAccept = accept.trim().toLowerCase();
+  if (!normalizedAccept || normalizedAccept === '*' || normalizedAccept === '*/*') {
+    return true;
+  }
+
+  const fileName = file.name.toLowerCase();
+  const fileType = file.type.toLowerCase();
+
+  return normalizedAccept.split(',').some((rawToken) => {
+    const token = rawToken.trim();
+    if (!token) return false;
+    if (token.startsWith('.')) return fileName.endsWith(token);
+    if (token.endsWith('/*')) return fileType.startsWith(token.slice(0, -1));
+    return fileType === token;
+  });
+}
+
+export function validateFile(file: File, maxSizeMB: number = 10, accept: string = '*'): { valid: boolean; error?: string } {
   const maxSizeBytes = maxSizeMB * 1024 * 1024;
 
   if (file.size > maxSizeBytes) {
     return {
       valid: false,
       error: `File too large. Maximum size is ${maxSizeMB}MB, got ${(file.size / (1024 * 1024)).toFixed(2)}MB`
+    };
+  }
+
+  if (!matchesAccept(file, accept)) {
+    return {
+      valid: false,
+      error: `File type not accepted. Choose a file matching ${accept}`
     };
   }
 

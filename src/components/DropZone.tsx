@@ -26,7 +26,7 @@ export const DropZone: React.FC<DropZoneProps> = ({
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
 
-      const validation = validateFile(file, maxSizeMB);
+      const validation = validateFile(file, maxSizeMB, accept);
       if (!validation.valid) {
         setError(validation.error || 'File validation failed');
         continue;
@@ -53,7 +53,7 @@ export const DropZone: React.FC<DropZoneProps> = ({
     if (results.length > 0) {
       onFilesSelected(results);
     }
-  }, [maxSizeMB, onFilesSelected]);
+  }, [accept, maxSizeMB, onFilesSelected]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -78,61 +78,57 @@ export const DropZone: React.FC<DropZoneProps> = ({
     if (e.target.files && e.target.files.length > 0) {
       processFiles(e.target.files);
     }
+    // Allow selecting the same file again after a validation error or cancel.
+    e.target.value = '';
   }, [processFiles]);
 
   const openFileDialog = () => {
     fileInputRef.current?.click();
   };
 
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      openFileDialog();
+    }
+  };
+
+  const acceptedLabel = accept === '*' || accept === '*/*' ? 'All file types' : `Accepted: ${accept}`;
+
   return (
     <div
       className={`dropzone ${isDragging ? 'dragging' : ''}`}
+      role="button"
+      tabIndex={0}
+      aria-label="Choose a file"
       onDrop={handleDrop}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onClick={openFileDialog}
-      style={{
-        border: `2px dashed ${isDragging ? '#4F46E5' : '#D1D5DB'}`,
-        borderRadius: '12px',
-        padding: '40px 20px',
-        textAlign: 'center',
-        cursor: 'pointer',
-        backgroundColor: isDragging ? '#EEF2FF' : '#F9FAFB',
-        transition: 'all 0.2s ease'
-      }}
+      onKeyDown={handleKeyDown}
     >
       <input
         ref={fileInputRef}
         type="file"
-        accept={accept}
+        accept={accept === '*' || accept === '*/*' ? undefined : accept}
         multiple={multiple}
         onChange={handleFileInput}
+        onClick={(event) => event.stopPropagation()}
         style={{ display: 'none' }}
       />
 
-      <div style={{ fontSize: '48px', marginBottom: '16px' }}>🪄</div>
+      <div className="dropzone-icon" aria-hidden="true">✦</div>
 
-      <h3 style={{ margin: '0 0 8px 0', color: '#1F2937' }}>
-        Drop files here or click to select
-      </h3>
+      <h3>Drop files here or click to select</h3>
 
-      <p style={{ margin: '0 0 16px 0', color: '#6B7280', fontSize: '14px' }}>
-        {accept !== '*' ? `Accepted: ${accept}` : 'All file types accepted'}
+      <p className="dropzone-help">
+        {acceptedLabel}
         {multiple ? ' • Multiple files allowed' : ' • Single file'}
         {` • Max ${formatFileSize(maxSizeMB * 1024 * 1024)}`}
       </p>
 
       {error && (
-        <div style={{
-          color: '#EF4444',
-          backgroundColor: '#FEF2F2',
-          padding: '8px 12px',
-          borderRadius: '6px',
-          fontSize: '14px',
-          marginTop: '12px'
-        }}>
-          ⚠️ {error}
-        </div>
+        <p className="dropzone-error" role="alert">⚠️ {error}</p>
       )}
     </div>
   );

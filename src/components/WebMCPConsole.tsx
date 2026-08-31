@@ -12,7 +12,7 @@ export const WebMCPConsole: React.FC = () => {
 
     try {
       const command = JSON.parse(input);
-      const modelContext = (window as any).modelContext;
+      const modelContext = (document as any).modelContext || (window as any).modelContext;
 
       if (!modelContext) {
         setOutput(prev => [...prev, '❌ WebMCP not available']);
@@ -20,11 +20,22 @@ export const WebMCPConsole: React.FC = () => {
       }
 
       if (command.action === 'list') {
-        const tools = modelContext.listTools ? modelContext.listTools() : [];
-        setOutput(prev => [...prev, `Available tools: ${tools.join(', ')}`]);
+        if (modelContext.listTools) {
+          const tools = modelContext.listTools();
+          setOutput(prev => [...prev, `Available tools: ${tools.join(', ')}`]);
+        } else if (modelContext.getTools) {
+          const tools = await modelContext.getTools();
+          setOutput(prev => [...prev, `Available tools: ${tools.map((tool: { name?: string }) => tool.name || 'unnamed').join(', ')}`]);
+        } else {
+          setOutput(prev => [...prev, 'Tool discovery is managed by the browser in native WebMCP mode.']);
+        }
       } else if (command.action === 'invoke' && command.tool) {
-        const result = await modelContext.invokeTool(command.tool, command.input || {});
-        setOutput(prev => [...prev, JSON.stringify(result, null, 2)]);
+        if (!modelContext.invokeTool) {
+          setOutput(prev => [...prev, 'Direct invocation is available in the local polyfill preview. Use the browser WebMCP inspector for native mode.']);
+        } else {
+          const result = await modelContext.invokeTool(command.tool, command.input || {});
+          setOutput(prev => [...prev, JSON.stringify(result, null, 2)]);
+        }
       } else {
         setOutput(prev => [...prev, '❌ Unknown command. Try: {"action": "list"} or {"action": "invoke", "tool": "magic_picker", "input": {...}}']);
       }
@@ -34,70 +45,42 @@ export const WebMCPConsole: React.FC = () => {
   };
 
   return (
-    <div style={{
-      backgroundColor: '#1F2937',
-      borderRadius: '12px',
-      padding: '24px',
-      color: 'white',
-      fontFamily: 'monospace',
-      marginTop: '24px'
-    }}>
-      <h2 style={{ marginTop: 0, fontSize: '18px' }}>🔧 WebMCP Console</h2>
-      <p style={{ color: '#9CA3AF', fontSize: '14px' }}>
-        Test the magic_picker tool directly. Example commands:
+    <section className="console-panel" aria-labelledby="console-title">
+      <div className="panel-heading">
+        <span className="panel-icon" aria-hidden="true">02</span>
+        <div>
+          <p className="panel-kicker">WebMCP test</p>
+          <h2 id="console-title">WebMCP console</h2>
+        </div>
+      </div>
+      <p className="panel-description">
+        Inspect the registered tool or invoke it directly in the local preview. Example commands:
       </p>
-      <ul style={{ color: '#9CA3AF', fontSize: '14px' }}>
-        <li>{'{"action": "list"}'}</li>
-        <li>{'{"action": "invoke", "tool": "magic_picker", "input": {"accept": "image/*", "prompt": "Select a test image"}}'}</li>
+      <ul className="console-examples">
+        <li><code>{'{"action":"list"}'}</code></li>
+        <li><code>{'{"action":"invoke","tool":"magic_picker","input":{"accept":"image/*"}}'}</code></li>
       </ul>
 
-      <div style={{
-        backgroundColor: '#111827',
-        borderRadius: '8px',
-        padding: '12px',
-        marginBottom: '12px',
-        minHeight: '100px',
-        maxHeight: '200px',
-        overflow: 'auto',
-        fontSize: '12px'
-      }}>
+      <div className="console-output" aria-live="polite" aria-label="Console output">
+        {output.length === 0 && <span className="console-placeholder">No commands yet. Start with list.</span>}
         {output.map((line, i) => (
-          <div key={i} style={{ marginBottom: '4px', whiteSpace: 'pre-wrap' }}>{line}</div>
+          <p className="console-line" key={i}>{line}</p>
         ))}
       </div>
 
-      <div style={{ display: 'flex', gap: '8px' }}>
+      <form className="console-form" onSubmit={(event) => { event.preventDefault(); void executeCommand(); }}>
         <input
+          className="console-input"
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          onKeyPress={(e) => e.key === 'Enter' && executeCommand()}
-          placeholder='Enter command...'
-          style={{
-            flex: 1,
-            padding: '8px 12px',
-            borderRadius: '6px',
-            border: '1px solid #374151',
-            backgroundColor: '#111827',
-            color: 'white',
-            fontSize: '12px'
-          }}
+          placeholder="Enter command…"
+          aria-label="WebMCP console command"
         />
-        <button
-          onClick={executeCommand}
-          style={{
-            backgroundColor: '#4F46E5',
-            color: 'white',
-            border: 'none',
-            borderRadius: '6px',
-            padding: '8px 16px',
-            fontSize: '12px',
-            cursor: 'pointer'
-          }}
-        >
+        <button className="console-run" type="submit">
           Run
         </button>
-      </div>
-    </div>
+      </form>
+    </section>
   );
 };

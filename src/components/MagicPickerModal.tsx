@@ -8,16 +8,50 @@ export const MagicPickerModal: React.FC = () => {
   const [options, setOptions] = useState<Record<string, unknown>>({});
 
   useEffect(() => {
+    const currentState = pickerState.getState();
+    setIsOpen(currentState.isOpen);
+    setOptions(currentState.options as Record<string, unknown>);
+
     const unsubscribe = pickerState.subscribe((state) => {
       setIsOpen(state.isOpen);
       setOptions(state.options as Record<string, unknown>);
     });
 
-    return unsubscribe;
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && pickerState.getState().isOpen) {
+        pickerState.complete({
+          success: false,
+          error: 'User cancelled file selection'
+        });
+      }
+    };
+
+    window.addEventListener('keydown', handleEscape);
+    return () => {
+      window.removeEventListener('keydown', handleEscape);
+      unsubscribe();
+    };
   }, []);
 
   const handleFilesSelected = (results: FileResult[]) => {
-    const result = results[0] || {
+    const successfulFiles = results.filter((result) => result.success && result.fileName && result.fileSize !== undefined && result.fileType !== undefined && result.base64Data);
+    const multiple = options.multiple === true;
+
+    if (multiple && successfulFiles.length > 0) {
+      pickerState.complete({
+        success: true,
+        fileCount: successfulFiles.length,
+        files: successfulFiles.map((file) => ({
+          fileName: file.fileName as string,
+          fileSize: file.fileSize as number,
+          fileType: file.fileType as string,
+          base64Data: file.base64Data as string
+        }))
+      });
+      return;
+    }
+
+    const result = successfulFiles[0] || results[0] || {
       success: false,
       error: 'No files selected'
     };
@@ -32,83 +66,31 @@ export const MagicPickerModal: React.FC = () => {
     });
   };
 
+  const prompt = typeof options.prompt === 'string' ? options.prompt : '';
+
   if (!isOpen) return null;
 
   return (
-    <div style={{
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      backgroundColor: 'rgba(0, 0, 0, 0.5)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      zIndex: 1000,
-      backdropFilter: 'blur(4px)'
-    }}>
-      <div style={{
-        backgroundColor: 'white',
-        borderRadius: '16px',
-        padding: '24px',
-        maxWidth: '500px',
-        width: '90%',
-        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
-      }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-          <h2 style={{ margin: 0, fontSize: '20px', color: '#1F2937' }}>
-            🪄 Magic Picker
-          </h2>
-          <button
-            onClick={handleCancel}
-            style={{
-              background: 'none',
-              border: 'none',
-              fontSize: '24px',
-              cursor: 'pointer',
-              color: '#6B7280'
-            }}
-          >
-            ×
-          </button>
+    <div className="picker-overlay" role="presentation">
+      <div className="picker-modal" role="dialog" aria-modal="true" aria-labelledby="picker-modal-title">
+        <div className="picker-modal-header">
+          <h2 className="picker-modal-title" id="picker-modal-title">Choose a file for the agent</h2>
+          <button className="icon-button" onClick={handleCancel} aria-label="Cancel file selection">×</button>
         </div>
 
-        {options.prompt && (
-          <p style={{
-            color: '#4B5563',
-            fontSize: '14px',
-            backgroundColor: '#F3F4F6',
-            padding: '12px',
-            borderRadius: '8px',
-            marginBottom: '20px'
-          }}>
-            💬 {options.prompt as string}
-          </p>
+        {prompt && (
+          <p className="picker-prompt">💬 {prompt}</p>
         )}
 
         <DropZone
           accept={(options.accept as string) || '*'}
           multiple={(options.multiple as boolean) || false}
-          maxSizeMB={(options.maxSizeMB as number) || 10}
+          maxSizeMB={typeof options.maxSizeMB === 'number' ? options.maxSizeMB : 10}
           onFilesSelected={handleFilesSelected}
         />
 
-        <div style={{ marginTop: '16px', textAlign: 'center' }}>
-          <button
-            onClick={handleCancel}
-            style={{
-              backgroundColor: '#F3F4F6',
-              border: 'none',
-              borderRadius: '8px',
-              padding: '10px 20px',
-              fontSize: '14px',
-              color: '#4B5563',
-              cursor: 'pointer'
-            }}
-          >
-            Cancel
-          </button>
+        <div className="picker-modal-footer">
+          <button className="picker-cancel" onClick={handleCancel}>Cancel</button>
         </div>
       </div>
     </div>

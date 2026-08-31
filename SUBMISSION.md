@@ -1,28 +1,39 @@
-# Magic Picker - WebMCP Challenge Submission
+# Magic Picker — WebMCP Challenge Submission
 
 ## 📋 Project Overview
 
-**Magic Picker** is a WebMCP tool that enables AI agents to request files from users without relying on native OS file dialogs - something that was previously impossible in sandboxed browser environments.
+**Magic Picker** is a focused human-handoff tool for browser agents. It lets an agent request a file from a person through a page-owned UI, keeping the agent out of the native file-dialog dead end.
 
 ## 🔗 Links
 
-- **Repository:** [Your GitLab/GitHub URL]
-- **Live Demo:** [Your deployment URL or localhost instructions]
-- **Video Demo:** [YouTube URL]
+- **Repository:** https://github.com/Akunimal/magicpicker
+- **Live Demo:** [Vercel URL — publish after deployment]
+- **Video Demo:** [YouTube URL — record after the public demo is live]
+
+The repository is public and includes the MIT `LICENSE` file. The video should be public on YouTube, shorter than three minutes, include audio, and show the live app working plus how WebMCP is used.
 
 ## 🎯 Problem Solved
 
-AI agents running in web browsers cannot interact with native OS dialogs (file pickers, color pickers, etc.) due to browser sandboxing. This is a fundamental security limitation that makes file access impossible for browser-based agents.
+AI agents running in web browsers can lose the thread when a workflow reaches a native OS dialog, browser popup, or another human-only interaction. A page cannot control those surfaces directly, but it can expose a structured WebMCP handoff for the interactions it owns.
+
+## Why WebMCP is the right fit
+
+WebMCP is the contract between the page and the agent: the page advertises a precise action, the agent can invoke it by name, and the page can keep the execution pending while a person completes the interaction. That is more reliable and understandable than asking an agent to guess how to operate a UI it cannot control.
+
+## Before and after
+
+- **Before:** the agent reaches a native file dialog it cannot operate, so the workflow stalls.
+- **After:** the agent calls `magic_picker`, the page presents a clear handoff, the person selects or drops a file, and the tool returns structured data.
 
 ## 💡 Solution
 
-Magic Picker provides a WebMCP tool that:
+Magic Picker provides a WebMCP handoff that:
 1. Receives file requests from AI agents
 2. Shows a web-based file picker UI to the user
 3. Converts selected files to base64
 4. Returns the data directly to the agent
 
-This completely bypasses the need for native OS dialogs.
+The agent does not need to operate the native picker. The user remains in control of the selection. If the host navigates away or aborts the tool, the page closes the pending handoff instead of leaving a dead request behind.
 
 ## 🛠️ Technical Implementation
 
@@ -31,7 +42,8 @@ This completely bypasses the need for native OS dialogs.
 ```javascript
 window.modelContext.registerTool({
   name: "magic_picker",
-  description: "Allows AI agents to request files from users without native OS dialogs",
+  title: "Request a file from the user",
+  description: "Ask the user to choose a file in the page UI and return metadata plus base64 data",
   inputSchema: {
     type: "object",
     properties: {
@@ -41,7 +53,8 @@ window.modelContext.registerTool({
       prompt: { type: "string" }
     }
   },
-  execute: async (input) => {
+  annotations: { readOnlyHint: true, untrustedContentHint: true },
+  execute: async (input, { signal }) => {
     // Shows web UI, user selects file, returns base64
   }
 });
@@ -79,20 +92,20 @@ window.modelContext.registerTool({
 - **Use cases:** Document analysis, image processing, data import, media collection
 
 ### Creativity & Ambition
-✅ **Novel concept**
-- First WebMCP tool specifically designed to bypass OS dialog limitations
-- Elegant solution to a fundamental browser security constraint
-- Opens new possibilities for browser-based AI agents
+✅ **Focused and extensible concept**
+- A reusable human-handoff pattern, demonstrated by `magic_picker`
+- Explicitly separates page-owned interactions from host-owned popups and terminal prompts
+- Leaves a clear path for future handoff tools without over-scoping this submission
 
 ## 🎥 Video Demo Script (3 minutes)
 
-**0:00-0:30:** Introduction - Explain the problem of native OS dialogs in sandboxed browsers
+**0:00-0:30:** Introduction - Explain why browser agents lose the thread at human-only interactions
 
 **0:30-1:30:** Live demo - Show ChatGPT invoking magic_picker, user selecting a file, agent receiving base64 data
 
 **1:30-2:30:** Technical explanation - Show the code, explain how WebMCP registration works, demonstrate file conversion
 
-**2:30-3:00:** Impact - Explain how this enables new use cases for browser-based AI agents
+**2:30-3:00:** Impact - Explain the handoff pattern and the boundary between page and host
 
 ## 🚀 Setup Instructions
 
@@ -101,6 +114,8 @@ window.modelContext.registerTool({
 3. Run `npm run dev`
 4. Open http://localhost:3000
 5. For real WebMCP testing: Open in ChatGPT browser or Chrome 149+ with WebMCP enabled
+
+For a ready-to-record walkthrough, see [VIDEO_SCRIPT.md](VIDEO_SCRIPT.md). For the navigation, popup, OAuth, and terminal boundary, see [PICKER_BRIDGE.md](PICKER_BRIDGE.md).
 
 ## 📄 License
 

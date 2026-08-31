@@ -9,6 +9,7 @@ interface ToolDefinition {
 
 class WebMCPPolyfill {
   private tools: Map<string, ToolDefinition> = new Map();
+  readonly __magicPickerPolyfill = true;
 
   registerTool(tool: ToolDefinition) {
     this.tools.set(tool.name, tool);
@@ -36,8 +37,14 @@ class WebMCPPolyfill {
   }
 }
 
-// Only apply polyfill if WebMCP is not natively available
-if (!(window as any).modelContext) {
-  (window as any).modelContext = new WebMCPPolyfill();
+// Only apply the fallback if neither the page nor the host already provides
+// WebMCP. Some host browsers expose document.modelContext as a read-only
+// property, so never try to overwrite it.
+const existingWindowContext = (window as any).modelContext;
+const existingDocumentContext = (document as any).modelContext;
+
+if (!existingWindowContext && !existingDocumentContext) {
+  const polyfill = new WebMCPPolyfill();
+  (window as any).modelContext = polyfill;
   console.log('🪄 WebMCP polyfill activated for testing');
 }

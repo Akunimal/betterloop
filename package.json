@@ -1,7 +1,7 @@
 {
   "name": "magic-picker",
   "version": "1.0.0",
-  "description": "WebMCP tool that allows AI agents to request files from users without native OS dialogs",
+  "description": "WebMCP human handoff that lets browser agents request files through page-owned UI",
   "type": "module",
   "scripts": {
     "dev": "vite",
