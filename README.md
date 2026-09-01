@@ -62,7 +62,7 @@ This is deliberately a conservative heuristic, not a claim that every model or a
 
 ## WebMCP and Codex integration
 
-The page uses document.modelContext.registerTool, the WebMCP site-tool contract. In a WebMCP-capable Codex browser, the ON button waits for registration, checks the visible tool catalog, and exposes a mandatory `betterloop_activation_check` that Codex must call immediately. The page only reports Codex verification after that tool executes successfully. Outside that environment, the app keeps a local polyfill so the public demo remains interactive and testable.
+The page uses document.modelContext.registerTool, the WebMCP site-tool contract. In a WebMCP-capable Codex browser, the ON button waits for registration, checks the visible tool catalog, and exposes a mandatory `betterloop_activation_check` that Codex is instructed to call immediately. The page reports native tool receipt after the catalog check and reports executable activation only after that tool succeeds. Outside that environment, the app keeps a local polyfill so the public demo remains interactive and testable.
 
 The optional Stop hook is a host-side Codex integration. A webpage cannot silently install a hook, change Codex approval policy, or wake a closed Codex session. Project hooks require Codex trust review and may require opening a new session or restarting the current one. BetterLoop also registers a `SessionStart` hook so Codex can announce the host integration to the model.
 

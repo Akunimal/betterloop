@@ -106,7 +106,7 @@ check('host run reaches visual log', mcp.includes('run: isActive() ? hostSession
 check('project-scoped MCP config', mcpConfig.includes('[mcp_servers.betterloop]') && mcpConfig.includes('scripts/betterloop-mcp.cjs') && mcpConfig.includes('default_tools_approval_mode'))
 check('hook honors host activation', hook.includes('HOST_STATUS_URL') && hook.includes('hostStatus.active !== true') && hook.includes('hostFeatures'))
 check('BetterLoop metadata', index.includes('betterloop-control') && index.includes('<title>BetterLoop'))
-check('activation handshake', dashboard.includes('ACTIVATION SENT') && dashboard.includes('READY: Codex verified BetterLoop tools.') && dashboard.includes('activation-verified') && tools.includes("name: 'betterloop_activation_check'") && tools.includes('MANDATORY after the user presses Turn BetterLoop ON'))
+check('activation handshake', dashboard.includes('ACTIVATION SENT') && dashboard.includes('READY: Codex received BetterLoop tools.') && dashboard.includes('READY: Codex verified BetterLoop tools.') && dashboard.includes('activation-verified') && tools.includes("name: 'betterloop_activation_check'") && tools.includes('MANDATORY after the user presses Turn BetterLoop ON'))
 check('hook readiness banner', dashboard.includes('READY: Codex confirmed') && dashboard.includes('Luna-compatible host MCP') && dashboard.includes('hook confirmed') && tools.includes("name: 'betterloop_hook_ready'"))
 
 const activePaths = [

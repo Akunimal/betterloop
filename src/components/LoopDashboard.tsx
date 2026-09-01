@@ -106,7 +106,8 @@ export function LoopDashboard() {
   const hostRunVisible = !run && Boolean(hostStatus.run)
   const activeFeatureCount = enabled ? Object.values(features).filter(Boolean).length : 0
   const toolNames = useMemo(() => getBetterLoopToolNames(), [])
-  const codexReady = activationVerified || hookReady || hostStatus.active
+  const nativeToolsReady = registrationVerified && mode === 'native'
+  const codexReady = activationVerified || hookReady || hostStatus.active || nativeToolsReady
 
   useEffect(() => {
     const updateRegistration = () => {
@@ -266,7 +267,7 @@ export function LoopDashboard() {
           <div><span className="strip-label">WebMCP</span><strong>{registered ? 'Tools registered' : 'Waiting for activation'}</strong></div>
           <div><span className="strip-label">Mode</span><strong>{mode === 'polyfill' ? 'Local demo bridge' : mode === 'native' ? 'Native site tools' : 'Unavailable'}</strong></div>
           <div><span className="strip-label">Host MCP</span><strong>{!enabled ? 'Waiting for activation' : hostStatus.active ? 'Connected / Luna ready' : hostStatus.hostConnected ? 'Connected / dormant' : 'Not connected / restart Codex'}</strong></div>
-          <div><span className="strip-label">Codex hook</span><strong>{!enabled ? 'Waiting for activation' : hookReady ? 'Ready / hook confirmed' : activationVerified ? 'Tools verified / hook optional' : registrationVerified ? 'Checking activation' : 'Waiting for Codex'}</strong></div>
+          <div><span className="strip-label">Codex hook</span><strong>{!enabled ? 'Waiting for activation' : hookReady ? 'Ready / hook confirmed' : activationVerified ? 'Tools executable / hook optional' : nativeToolsReady ? 'Tools received / check pending' : registrationVerified ? 'Checking activation' : 'Waiting for Codex'}</strong></div>
         </section>
 
         <section className={'notice-card hook-banner ' + (!enabled ? 'is-idle' : codexReady ? 'is-ready' : 'is-pending')} role={enabled && !codexReady ? 'alert' : undefined}>
@@ -280,6 +281,8 @@ export function LoopDashboard() {
                   ? 'READY: Codex confirmed the BetterLoop hook.'
                   : activationVerified
                     ? 'READY: Codex verified BetterLoop tools.'
+                    : nativeToolsReady
+                      ? 'READY: Codex received BetterLoop tools.'
                     : registrationVerified
                       ? 'ACTIVATION SENT: Codex is checking BetterLoop.'
                       : 'ACTIVATION PENDING: BetterLoop is waiting for Codex.'}</strong>
@@ -291,6 +294,8 @@ export function LoopDashboard() {
                 ? 'Codex delivered the trusted SessionStart hook signal and confirmed it through WebMCP. Automatic “Continue” and the “Is the job 100% done?” check are ready for this page session.'
                 : activationVerified
                   ? 'Codex called the activation check and verified that the page tools are registered and executable. The optional Stop hook adds automatic turn blocking after its normal project trust.'
+                  : nativeToolsReady
+                    ? 'Native WebMCP confirmed that Codex received the registered BetterLoop tools. Codex was also instructed to call betterloop_activation_check; that call provides the final execution confirmation when the host supports it.'
                   : registrationVerified
                     ? 'The ON button registered BetterLoop and requested Codex to call betterloop_activation_check. The page will turn READY only after Codex performs that check.'
                     : 'The page is ready to register its tools, but Codex has not acknowledged the activation yet. Keep this page in the Codex browser context so Codex can inspect the newly registered tools.'}</p>
