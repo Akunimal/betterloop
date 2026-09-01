@@ -57,3 +57,11 @@
 }
 
 @media(max-width:700px) { .workbench { grid-template-columns: 1fr; margin-top: 34px; }.workbench .guide { grid-template-columns: 1fr; }.workbench .results { margin-top: 0; } }
+
+.agent-proof > small { margin-left:auto; max-width:40%; color:#7784a3; font-size:10px; line-height:1.4; text-align:right; }
+.environment-matrix { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:7px; margin-top:10px; }
+.environment-matrix article { display:grid; grid-template-columns:1fr auto; gap:3px 9px; padding:9px 11px; border:1px solid #29314a; border-radius:10px; background:#11172a; }
+.environment-matrix strong { font-size:12px; }.environment-matrix span { color:#7fe5dc; font-size:10px; font-weight:800; }.environment-matrix small { grid-column:1 / -1; color:#8490ac; font-size:10px; }
+.tool-grid article:last-child { grid-column:span 2; }
+@media (min-width:701px) and (max-height:950px) { .environment-matrix { margin-top:8px; }.environment-matrix article { padding:7px 9px; } }
+@media(max-width:700px) { .environment-matrix { grid-template-columns:1fr; }.agent-proof > small { display:none; }.tool-grid article:last-child { grid-column:auto; } }

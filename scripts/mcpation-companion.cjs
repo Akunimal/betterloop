@@ -22,10 +22,14 @@ const sources = [
   { label: 'Claude Desktop', file: path.join(platformConfig, 'Claude', 'claude_desktop_config.json'), format: 'json', keys: ['mcpServers', 'mcp_servers'] },
   { label: 'Cursor', file: path.join(home, '.cursor', 'mcp.json'), format: 'json', keys: ['mcpServers', 'mcp_servers'] },
   { label: 'Windsurf', file: path.join(home, '.codeium', 'windsurf', 'mcp_config.json'), format: 'json', keys: ['mcpServers', 'mcp_servers'] },
-  { label: 'VS Code', file: path.join(platformConfig, 'Code', 'User', 'mcp.json'), format: 'json', keys: ['servers', 'mcpServers', 'mcp_servers'] },
+  { label: 'VS Code Agent Host', client: 'VS Code', file: path.join(home, '.copilot', 'mcp-config.json'), format: 'json', keys: ['servers', 'mcpServers', 'mcp_servers'] },
+  { label: 'VS Code User', client: 'VS Code', file: path.join(platformConfig, 'Code', 'User', 'mcp.json'), format: 'json', keys: ['servers', 'mcpServers', 'mcp_servers'] },
   { label: 'Cline', file: codeStorage('saoudrizwan.claude-dev'), format: 'json', keys: ['mcpServers', 'mcp_servers'] },
   { label: 'Roo Code', file: codeStorage('rooveterinaryinc.roo-cline'), format: 'json', keys: ['mcpServers', 'mcp_servers'] },
   { label: 'Zed', file: path.join(platformConfig, 'zed', 'settings.json'), format: 'json', keys: ['context_servers'], manualOnly: true },
+]
+const ideSettings = [
+  { label: 'VS Code', file: path.join(platformConfig, 'Code', 'User', 'settings.json') },
 ]
 const allowedOrigin = (origin = '') => Boolean(origin) && (origin === process.env.MCPATION_ALLOWED_ORIGIN || /^https:\/\/mcpation(?:-[a-z0-9-]+)?\.vercel\.app$/i.test(origin) || /^http:\/\/localhost(?::\d+)?$/i.test(origin))
 function cors(req, res) { const origin = req.headers.origin || ''; if (allowedOrigin(origin)) res.setHeader('access-control-allow-origin', origin); res.setHeader('access-control-allow-headers', 'content-type,x-mcpation-session'); res.setHeader('access-control-allow-methods', 'GET,POST,OPTIONS') }
@@ -34,12 +38,21 @@ function readBody(req) { return new Promise((resolve) => { let raw = ''; req.on(
 function target(command, url) { if (url) { try { return new URL(url).origin } catch { return 'invalid URL' } } return command ? path.basename(command) : 'missing transport' }
 function available(command) { if (!command) return true; return spawnSync(process.platform === 'win32' ? 'where' : 'which', [command], { windowsHide: true, timeout: 1200 }).status === 0 }
 function signature(value) { return id(JSON.stringify({ command: value.command || '', args: value.args || [], url: value.url || '', disabled: Boolean(value.disabled) })) }
+function hostProfile() {
+  const windows = process.platform === 'win32'
+  const gitBashInstalled = windows && [path.join(process.env.ProgramFiles || '', 'Git', 'bin', 'bash.exe'), path.join(process.env['ProgramFiles(x86)'] || '', 'Git', 'bin', 'bash.exe'), path.join(home, 'scoop', 'apps', 'git', 'current', 'bin', 'bash.exe')].some((candidate) => fs.existsSync(candidate))
+  let codexShell = 'not explicitly configured'
+  try { const match = fs.readFileSync(path.join(home, '.codex', 'config.toml'), 'utf8').match(/^\s*shell\s*=\s*["']([^"']+)["']/mi); if (match) codexShell = path.basename(match[1]) } catch { /* Codex configuration is optional. */ }
+  const recommendedShell = windows ? (gitBashInstalled ? 'Git Bash for POSIX-focused commands' : 'PowerShell for Windows-native commands') : 'the system default shell'
+  return { operatingSystem: windows ? 'Windows' : process.platform === 'darwin' ? 'macOS' : 'Linux', gitBashInstalled, codexShell, recommendedShell }
+}
+function parseJsonDocument(file) { const raw = fs.readFileSync(file, 'utf8'); try { return JSON.parse(raw) } catch { return JSON.parse(raw.replace(/^\s*\/\/.*$/gm, '').replace(/,\s*([}\]])/g, '$1')) } }
 function parseJson(source) {
-  const document = JSON.parse(fs.readFileSync(source.file, 'utf8'))
+  const document = parseJsonDocument(source.file)
   const groupKey = source.keys.find((key) => document[key] && typeof document[key] === 'object')
   const group = groupKey ? document[groupKey] : {}
   const servers = Object.entries(group).filter(([, value]) => value && typeof value === 'object').map(([name, value]) => ({
-    key: `${source.label}:${name}:${id(source.file)}`, name, label: source.label, file: source.file, format: 'json', groupKey, manualOnly: Boolean(source.manualOnly),
+    key: `${source.label}:${name}:${id(source.file)}`, name, label: source.label, client: source.client || source.label, file: source.file, format: 'json', groupKey, manualOnly: Boolean(source.manualOnly),
     transport: value.url ? 'http' : 'stdio', target: target(value.command, value.url), command: value.command || '', url: value.url || '', disabled: Boolean(value.disabled), available: value.command ? available(value.command) : true, signature: signature(value),
   }))
   return { servers, malformed: !groupKey && Object.keys(document).length > 0 }
@@ -47,17 +60,20 @@ function parseJson(source) {
 function parseToml(source) {
   const text = fs.readFileSync(source.file, 'utf8'); const servers = []; let name = null; let values = {}
   const scalar = (value) => value.trim().replace(/^['"]|['"]$/g, '')
-  const commit = () => { if (!name) return; const command = scalar(values.command || ''); const url = scalar(values.url || ''); servers.push({ key: `${source.label}:${name}:${id(source.file)}`, name, label: source.label, file: source.file, format: 'toml', transport: url ? 'http' : 'stdio', target: target(command, url), command, url, disabled: scalar(values.enabled || '') === 'false' || scalar(values.disabled || '') === 'true', available: command ? available(command) : true, signature: id(JSON.stringify(values)) }) }
+  const commit = () => { if (!name) return; const command = scalar(values.command || ''); const url = scalar(values.url || ''); servers.push({ key: `${source.label}:${name}:${id(source.file)}`, name, label: source.label, client: source.client || source.label, file: source.file, format: 'toml', transport: url ? 'http' : 'stdio', target: target(command, url), command, url, disabled: scalar(values.enabled || '') === 'false' || scalar(values.disabled || '') === 'true', available: command ? available(command) : true, signature: id(JSON.stringify(values)) }) }
   for (const raw of text.split(/\r?\n/)) { const header = raw.match(/^\s*\[mcp_servers\.([A-Za-z0-9_-]+|"[^"]+"|'[^']+')\]\s*$/); if (header) { commit(); name = header[1].replace(/^['"]|['"]$/g, ''); values = {}; continue } if (/^\s*\[/.test(raw)) { commit(); name = null; values = {}; continue } const pair = raw.match(/^\s*(command|url|enabled|disabled|args)\s*=\s*(.+?)\s*(?:#.*)?$/); if (name && pair) values[pair[1]] = pair[2].trim() }
   commit(); return { servers, malformed: false }
 }
 function inventory() {
   const all = []; const found = []; const errors = []; const malformed = []
-  for (const source of sources) { if (!source.file || !fs.existsSync(source.file)) continue; try { const parsed = source.format === 'toml' ? parseToml(source) : parseJson(source); all.push(...parsed.servers); found.push(source.label); if (parsed.malformed) malformed.push(source.label) } catch { errors.push(source.label) } }
-  return { all, found, errors, malformed }
+  for (const source of sources) { if (!source.file || !fs.existsSync(source.file)) continue; try { const parsed = source.format === 'toml' ? parseToml(source) : parseJson(source); all.push(...parsed.servers); found.push(source); if (parsed.malformed) malformed.push(source.label) } catch { errors.push(source.label) } }
+  const policies = []
+  for (const setting of ideSettings) { if (!fs.existsSync(setting.file)) continue; try { const document = parseJsonDocument(setting.file); policies.push({ label: setting.label, mcpAccess: typeof document['chat.mcp.access'] === 'string' ? document['chat.mcp.access'] : 'default', discovery: document['chat.mcp.discovery.enabled'], outputCompression: document['chat.tools.compressOutput.enabled'] }) } catch { errors.push(`${setting.label} settings`) } }
+  return { all, found, errors, malformed, policies }
 }
 function diagnose() {
-  const { all, found, errors, malformed } = inventory(); const findings = []; const proposals = []
+  const { all, found, errors, malformed, policies } = inventory(); const findings = []; const proposals = []
+  const host = hostProfile()
   const add = (severity, title, detail) => findings.push({ id: id(title + detail), severity, title, detail })
   const bySignature = new Map(); const byName = new Map()
   for (const server of all) { bySignature.set(server.signature, [...(bySignature.get(server.signature) || []), server]); byName.set(server.name.toLowerCase(), [...(byName.get(server.name.toLowerCase()) || []), server]) }
@@ -67,12 +83,18 @@ function diagnose() {
   for (const server of all.filter((item) => item.url && item.target === 'invalid URL')) { add('attention', `${server.name} has an invalid URL`, `Configured in ${server.label}; review the endpoint format manually.`); proposals.push({ id: `url-${server.key}`, title: `Correct ${server.name} URL`, detail: 'Endpoint repairs stay manual so MCPation never redirects a tool to an unreviewed service.', kind: 'manual-review', canApply: false, serverKey: server.key }) }
   for (const server of all.filter((item) => item.disabled)) { add('review', `${server.name} is disabled`, `Configured in ${server.label}; confirm whether it is intentionally retained.`); proposals.push({ id: `disabled-${server.key}`, title: `Review disabled ${server.name}`, detail: 'Disabled entries are never removed automatically because they may be intentionally preserved.', kind: 'manual-review', canApply: false, serverKey: server.key }) }
   for (const server of all.filter((item) => item.available === false)) { add('attention', `${server.name} command is unavailable`, `The configured executable cannot be resolved from PATH.`); proposals.push({ id: `command-${server.key}`, title: `Repair ${server.name} command`, detail: 'Choose the correct executable or install its dependency. MCPation will not guess a replacement.', kind: 'manual-review', canApply: false, serverKey: server.key }) }
+  if (host.operatingSystem === 'Windows' && /bash/i.test(host.codexShell)) { add(host.gitBashInstalled ? 'review' : 'attention', `Codex shell: ${host.codexShell}`, host.gitBashInstalled ? 'Git Bash is installed. Confirm Codex resolves it before relying on POSIX quoting or shell scripts.' : 'Codex is configured for a bash-like shell, but Git Bash was not detected. POSIX quoting may fail.'); proposals.push({ id: 'shell-codex', title: 'Review Codex shell on Windows', detail: host.gitBashInstalled ? 'Git Bash is available. Use it only after confirming the configured shell resolves correctly.' : 'Install or explicitly configure a compatible shell, or use PowerShell-native commands.', kind: 'manual-review', canApply: false }) }
+  if (host.operatingSystem === 'Windows' && !host.gitBashInstalled && all.some((server) => /(^|[\\/])bash(?:\.exe)?$/i.test(server.command))) { add('attention', 'A configured MCP expects bash on Windows', 'Git Bash was not detected, so this command may fail before the MCP starts.') }
+  const profiles = [...new Set(found.map((source) => source.client || source.label))].map((client) => { const configured = all.filter((server) => server.client === client); const policy = policies.find((item) => item.label === client); return { name: client, configuredServers: configured.map((server) => server.name), mcpAccess: policy?.mcpAccess || 'unknown', discovery: policy?.discovery === false ? 'off' : policy?.discovery === true ? 'on' : 'unknown' } })
+  for (const profile of profiles) { if (profile.mcpAccess === 'none') { add('attention', `${profile.name} blocks MCP tools`, 'The IDE policy disables MCP access even if a server is configured.'); proposals.push({ id: `access-${profile.name}`, title: `Review ${profile.name} MCP access`, detail: 'Set the IDE MCP access policy intentionally; MCPation will not override an organization or user policy.', kind: 'manual-review', canApply: false }) } if (profile.discovery === 'off') { add('review', `${profile.name} MCP discovery is off`, 'Servers configured by other supported clients will not be automatically discovered by this IDE.'); proposals.push({ id: `discovery-${profile.name}`, title: `Review ${profile.name} MCP discovery`, detail: 'Enable discovery only if sharing MCP configuration across clients is desired.', kind: 'manual-review', canApply: false }) } }
+  for (const policy of policies) if (policy.outputCompression === false) { add('review', `${policy.label} terminal output compression is off`, 'Large terminal output can consume unnecessary agent context.'); proposals.push({ id: `compression-${policy.label}`, title: `Review ${policy.label} output compression`, detail: 'Consider enabling output compression after confirming it will not hide information you need.', kind: 'manual-review', canApply: false }) }
+  if (profiles.length > 1) for (const name of new Set(all.map((server) => server.name))) { const present = profiles.filter((profile) => profile.configuredServers.includes(name)); if (present.length && present.length < profiles.length) { const missing = profiles.filter((profile) => !profile.configuredServers.includes(name)); add('review', `Coverage gap: ${name}`, `Configured for ${present.map((profile) => profile.name).join(', ')} but not for ${missing.map((profile) => profile.name).join(', ')}.`); proposals.push({ id: `coverage-${id(name + missing.map((profile) => profile.name).join())}`, title: `Review ${name} coverage`, detail: 'Decide whether this server should remain scoped or be configured in the other environment.', kind: 'manual-review', canApply: false }) } }
   for (const source of malformed) add('review', `${source} configuration shape is unsupported`, 'MCPation found the file but not a recognized MCP server collection. Review the IDE configuration format manually.')
   for (const source of errors) add('review', `${source} configuration could not be parsed`, 'MCPation did not read its contents. Repair the syntax before making any change.')
   if (!all.length && !errors.length) add('healthy', 'No readable MCP configurations found', 'No supported configuration file was found in the standard local paths for this operating system.')
   if (!findings.length) add('healthy', 'No obvious configuration conflicts', 'The read-only scan found no duplicates, disabled entries, invalid endpoints, or unavailable commands.')
   const servers = all.map(({ key, name, label, transport, target: serverTarget, disabled, available: isAvailable }) => ({ id: key, name, source: label, transport, target: serverTarget, disabled, available: isAvailable }))
-  return { scannedAt: new Date().toISOString(), platform: process.platform, sources: found, supportedSources: sources.map(({ label }) => label), servers, findings, proposals, privacy: 'Only server metadata is returned. Values under env and headers are never read or sent.', internal: all }
+  return { scannedAt: new Date().toISOString(), platform: process.platform, host, sources: found.map((source) => source.label), supportedSources: sources.map(({ label }) => label), profiles, servers, findings, proposals, privacy: 'Only server metadata is returned. Values under env and headers are never read or sent.', internal: all }
 }
 function sessionFor(req) { const token = req.headers['x-mcpation-session']; const session = typeof token === 'string' ? sessions.get(token) : null; return session && session.expiresAt > Date.now() && session.origin === (req.headers.origin || '') ? session : null }
 function publicResult(result) { const { internal, ...safe } = result; return safe }

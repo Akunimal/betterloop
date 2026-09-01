@@ -10,7 +10,9 @@ MCP tools accumulate across Codex, Claude Desktop, Cursor, Windsurf, VS Code, Cl
 
 - `mcpation_scan_environment` — refresh the user-approved scan.
 - `mcpation_get_inventory` — read server metadata only.
-- `mcpation_get_findings` — inspect duplicate, disabled, and unavailable entries.
+- `mcpation_get_findings` — inspect gaps, broken commands, policies, and configuration issues.
+- `mcpation_get_environment_matrix` — compare configured server coverage and known MCP access policy by IDE.
+- `mcpation_get_host_profile` — flag shell compatibility and quoting risk without exposing local paths.
 - `mcpation_plan_cleanup` — produce a review-only cleanup plan.
 
 ## Local companion
