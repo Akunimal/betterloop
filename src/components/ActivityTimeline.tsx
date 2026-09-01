@@ -13,11 +13,14 @@ const labels: Record<LoopEvent['type'], string> = {
   run_failed: 'Run failed',
 }
 
-export function ActivityTimeline({ events }: { events: LoopEvent[] }) {
+export function ActivityTimeline({ events, limit = 3 }: { events: LoopEvent[]; limit?: number }) {
+  const recentEvents = events.slice(-limit).reverse()
+
   return (
-    <div className="timeline">
-      {events.slice().reverse().map((event) => (
-        <article className="timeline-item" key={event.id}>
+    <div className="timeline" aria-label={'Latest ' + recentEvents.length + ' of ' + events.length + ' activity events'}>
+      <div className="timeline-summary"><span>LIVE SIGNAL</span><strong>{events.length} events</strong></div>
+      {recentEvents.map((event) => (
+        <article className="timeline-item" key={event.id} title={event.detail}>
           <span className={'timeline-dot timeline-dot-' + event.type} />
           <div className="timeline-copy">
             <div className="timeline-meta">
@@ -25,7 +28,6 @@ export function ActivityTimeline({ events }: { events: LoopEvent[] }) {
               <time>{new Date(event.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</time>
             </div>
             <p>{event.title}</p>
-            <small>{event.detail}</small>
           </div>
         </article>
       ))}

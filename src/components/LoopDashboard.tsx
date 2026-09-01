@@ -32,10 +32,9 @@ import {
   type BetterLoopHostStatus,
 } from '../host/betterLoopHost'
 
-const featureGroups: Array<{ title: string; description: string; items: Array<{ key: keyof BetterLoopFeatures; label: string; detail: string }> }> = [
+const featureGroups: Array<{ title: string; items: Array<{ key: keyof BetterLoopFeatures; label: string; detail: string }> }> = [
   {
     title: 'Agent continuity',
-    description: 'Keep long-running work moving across pauses and phases.',
     items: [
       { key: 'autoContinue', label: 'Auto-continue', detail: 'Lets the trusted Stop hook request the next Codex turn.' },
       { key: 'quotaContinuation', label: 'Quota recovery', detail: 'Records a conservative five-hour reset and resumes from the checkpoint.' },
@@ -44,7 +43,6 @@ const featureGroups: Array<{ title: string; description: string; items: Array<{ 
   },
   {
     title: 'Verification',
-    description: 'Make “done” mean done, not merely a completed response.',
     items: [
       { key: 'askIfDone', label: 'Ask “100% done?”', detail: 'At the end of a flow, Codex must answer the final completion question.' },
       { key: 'completionVerification', label: 'Evidence check', detail: 'Requires concrete evidence for every important outcome.' },
@@ -53,10 +51,11 @@ const featureGroups: Array<{ title: string; description: string; items: Array<{ 
   },
   {
     title: 'Signals',
-    description: 'Give the user a quiet visual and audible handoff.',
     items: [
       { key: 'soundAlerts', label: 'Sound alerts', detail: 'Plays a short browser tone when continuation becomes available.' },
       { key: 'activityLog', label: 'Activity log', detail: 'Keeps a local visual timeline of the BetterLoop state.' },
+      { key: 'streamMonitor', label: 'Stream monitor', detail: 'Watches for an interrupted agent stream and preserves the next action.' },
+      { key: 'blockerHandoffs', label: 'Blocker handoffs', detail: 'Turns a genuine blocker into a clear handoff with the viable options.' },
     ],
   },
 ]
@@ -303,21 +302,14 @@ export function LoopDashboard() {
         </section>
 
         <div className="section-heading"><div><span className="eyebrow">CONTROL PLANE</span><h2>Choose the loop behavior</h2></div><span className="feature-count">{activeFeatureCount}/{Object.keys(features).length} active</span></div>
-        <section className="feature-grid">
-          {featureGroups.map((group) => (
-            <article className="feature-card" key={group.title}>
-              <div className="feature-card-heading"><div><h3>{group.title}</h3><p>{group.description}</p></div><span className="group-dot" /></div>
-              <div className="feature-list">
-                {group.items.map((item) => (
-                  <label className="feature-row" key={item.key}>
-                    <span><strong>{item.label}</strong><small>{item.detail}</small></span>
-                    <input type="checkbox" checked={features[item.key]} onChange={(event) => setFeature(item.key, event.target.checked)} />
-                    <span className="mini-toggle" aria-hidden="true"><span /></span>
-                  </label>
-                ))}
-              </div>
-            </article>
-          ))}
+        <section className="feature-matrix" aria-label="BetterLoop features">
+          {featureGroups.flatMap((group) => group.items.map((item) => (
+            <label className="feature-tile" key={item.key} title={group.title + ': ' + item.detail}>
+              <span className="feature-tile-copy"><small>{group.title}</small><strong>{item.label}</strong></span>
+              <input type="checkbox" checked={features[item.key]} onChange={(event) => setFeature(item.key, event.target.checked)} aria-label={group.title + ': ' + item.label + '. ' + item.detail} />
+              <span className="mini-toggle" aria-hidden="true"><span /></span>
+            </label>
+          )))}
         </section>
 
         <div className="activity-grid">
