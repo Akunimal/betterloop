@@ -4,9 +4,9 @@
 
 Execute this file as a recording task. Do not research, browse the web, search for recording tools, inspect whether Codex has a video API, invoke Graphify, change OBS settings, open a terminal, or ask the user for a new plan. OBS is already configured and the red capture rectangle is the only recorded area.
 
-Do not use Computer Use. Do not list Windows apps, inspect desktop windows, activate windows, or automate the Codex desktop shell. Use only the already-open in-app browser tab through the browser control available to the agent. The only desktop shortcut in this runbook is `Shift+G` for the user-prepared OBS recording hotkey. Keep every visible message in this conversation concise, neutral English. Do not expose private chats, account information, unrelated tabs, settings, terminals, credentials, or local file paths.
+Use a strict two-channel workflow. Use the already-open in-app browser control for every BetterLoop interaction. Use Computer Use only for the prepared OBS window and only to press the user-configured `Shift+G` recording hotkey at the beginning and end. Do not use Computer Use on the Codex/ChatGPT desktop window, the embedded browser, terminals, settings, or any other app. Do not research, browse the web, invoke Graphify, or inspect whether Codex has a video API. Keep every visible message in this conversation concise, neutral English. Do not expose private chats, account information, unrelated tabs, settings, terminals, credentials, or local file paths.
 
-The user has prepared OBS. If recording is stopped, press `Shift+G` once to start it. Do not open OBS or its settings. Press `Shift+G` once at the end to stop recording.
+The user has prepared OBS. If recording is stopped, use Computer Use to target the already-open OBS window and press `Shift+G` once to start it. Do not open OBS or its settings. Press `Shift+G` once at the end to stop recording.
 
 ## Starting state
 
@@ -19,7 +19,7 @@ The user has prepared OBS. If recording is stopped, press `Shift+G` once to star
 
 Perform the following actions in order. After each action, pause long enough for the state named in bold to be readable. Never click repeatedly while waiting.
 
-1. Start OBS with `Shift+G` if it is not already recording. Show the clean BetterLoop page in its OFF state for about 10 seconds.
+1. Use Computer Use only on the already-open OBS window. Press `Shift+G` once if recording is not already active. Do not perform any other OBS action. Show the clean BetterLoop page in its OFF state for about 10 seconds.
 2. Click `Turn BetterLoop ON` once. Wait for `Tools registered` and then `READY: Codex received BetterLoop tools.` If the current Codex host can execute `betterloop_activation_check`, allow that check to run and show `READY: Codex verified BetterLoop tools.` If that command is unavailable, do not investigate or loop; keep the honest received-tools state and continue.
 3. Leave the capability strip and the enabled controls visible for about 8 seconds. The key controls are `Auto-continue`, `Ask “100% done?”`, `Quota recovery`, `Evidence check`, and `Research before blocking`.
 4. Click `Start guided demo →` once. Scroll down until `LIVE RUN` and `OBSERVABILITY` are readable. Hold on the running state and the first checkpoint.
@@ -28,7 +28,7 @@ Perform the following actions in order. After each action, pause long enough for
 7. Click `Quota available` once. Hold on `Resuming`, the continuation event, and the browser alert tone.
 8. Click `Mark 100% done →` once. Hold on `100% verified`, `1/1 checks passed`, and the evidence line.
 9. Scroll to the bottom of the page so the complete activity log is visible. Hold the final state for at least 5 seconds.
-10. Stop OBS with `Shift+G`.
+10. Use Computer Use only on the already-open OBS window. Press `Shift+G` once to stop OBS. Do not interact with any other Windows app.
 
 ## Timing target
 
