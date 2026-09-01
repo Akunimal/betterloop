@@ -94,7 +94,7 @@ function diagnose() {
   if (!all.length && !errors.length) add('healthy', 'No readable MCP configurations found', 'No supported configuration file was found in the standard local paths for this operating system.')
   if (!findings.length) add('healthy', 'No obvious configuration conflicts', 'The read-only scan found no duplicates, disabled entries, invalid endpoints, or unavailable commands.')
   const servers = all.map(({ key, name, label, transport, target: serverTarget, disabled, available: isAvailable }) => ({ id: key, name, source: label, transport, target: serverTarget, disabled, available: isAvailable }))
-  return { scannedAt: new Date().toISOString(), platform: process.platform, host, sources: found.map((source) => source.label), supportedSources: sources.map(({ label }) => label), profiles, servers, findings, proposals, privacy: 'Only server metadata is returned. Values under env and headers are never read or sent.', internal: all }
+  return { schemaVersion: 2, scannedAt: new Date().toISOString(), platform: process.platform, host, sources: found.map((source) => source.label), supportedSources: sources.map(({ label }) => label), profiles, servers, findings, proposals, privacy: 'Only server metadata is returned. Values under env and headers are never read or sent.', internal: all }
 }
 function sessionFor(req) { const token = req.headers['x-mcpation-session']; const session = typeof token === 'string' ? sessions.get(token) : null; return session && session.expiresAt > Date.now() && session.origin === (req.headers.origin || '') ? session : null }
 function publicResult(result) { const { internal, ...safe } = result; return safe }

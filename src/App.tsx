@@ -35,7 +35,7 @@ export default function App() {
     try {
       const result = await startConsentSession()
       setScan(result)
-      setMessage(`${result.servers.length} entries found in ${result.sources.length} local configuration source${result.sources.length === 1 ? '' : 's'}.`)
+      setMessage(result.schemaVersion < 2 ? `${result.servers.length} entries found. Restart the local companion once to load environment and shell checks.` : `${result.servers.length} entries found in ${result.sources.length} local configuration source${result.sources.length === 1 ? '' : 's'}.`)
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Could not reach the local companion.')
     } finally {
@@ -87,7 +87,7 @@ export default function App() {
       <div><small>TOOLS</small><strong>{toolNames.length} ways to inspect</strong></div>
     </section>
 
-    <section className="agent-proof"><span className="pulse" /><div><strong>Built for the handoff between you and an agent.</strong><p>{message}</p></div>{scan && <small>{scan.host.operatingSystem} · {scan.host.gitBashInstalled ? 'Git Bash found' : 'No Git Bash detected'} · {scan.host.recommendedShell}</small>}</section>
+    <section className="agent-proof"><span className="pulse" /><div><strong>Built for the handoff between you and an agent.</strong><p>{message}</p></div>{scan && <small>{scan.schemaVersion < 2 ? 'Companion update available' : `${scan.host.operatingSystem} · ${scan.host.gitBashInstalled ? 'Git Bash found' : 'No Git Bash detected'} · ${scan.host.recommendedShell}`}</small>}</section>
 
     <div className="workbench">
       <section className="guide">
