@@ -22,7 +22,7 @@ Use this route when evaluating whether an agent can consume the tools.
 2. Confirm Node.js 18+ is available, then run `npm install` and `npm run verify`.
 3. Restart or reopen the Codex task after reviewing the project MCP and hook configuration. The project files are `.codex/config.toml` and `.codex/hooks.json`; no global configuration is required.
 4. Open the public page in Codex’s embedded browser and press `Turn BetterLoop ON`.
-5. Let Codex call the newly exposed `betterloop_activation_check`. The page reports `Codex verified BetterLoop tools` only after that tool returns success.
+5. Let Codex call the newly exposed `betterloop_activation_check`. The page reports `Codex verified BetterLoop tools` only after that tool returns success. If the current model cannot call browser WebMCP, the same check is available through the connected standard MCP host.
 6. Confirm the capability strip reports a connected `Host MCP`. The visible button is the explicit consent gate; before it, the host is connected but dormant.
 7. Ask the agent to call `betterloop_host_status`, then `betterloop_start` with the exact original task.
 8. Ask it to save a checkpoint with `betterloop_checkpoint`, and if it encounters uncertainty, use `betterloop_research_blocker` only after trying a workaround and collecting alternatives.

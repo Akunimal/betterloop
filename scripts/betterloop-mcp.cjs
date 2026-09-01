@@ -21,6 +21,7 @@ const HOST_PORT = Number(process.env.BETTERLOOP_MCP_PORT || process.env.BETTERLO
 const SESSION_TTL_MS = 5 * 60 * 1000
 const MAX_BODY_BYTES = 64 * 1024
 const SESSION_PROOF = 'session_start_hook_confirmed'
+const ACTIVATION_CONFIRMATION = 'user_clicked_betterloop_on'
 
 const DEFAULT_FEATURES = {
   checkpoints: true,
@@ -203,6 +204,27 @@ const tools = [
     description: 'Read whether the BetterLoop MCP host bridge is connected and whether the user has explicitly activated the temporary page session. This tool is safe to call before activation.',
     inputSchema: schema(),
     execute: () => hostStatus(),
+  },
+  {
+    name: 'betterloop_activation_check',
+    title: 'Verify BetterLoop activation',
+    description: 'MANDATORY after the user presses Turn BetterLoop ON: call this tool immediately to verify that the connected BetterLoop host is active and executable. Do not claim activation is complete until this returns success. Use confirmation "user_clicked_betterloop_on".',
+    inputSchema: schema({ confirmation: { type: 'string', enum: [ACTIVATION_CONFIRMATION], description: 'Confirms the visible user activation that triggered this check.' } }, ['confirmation']),
+    execute: (input) => {
+      const error = requireSession('betterloop_activation_check')
+      if (error) return error
+      if (text(input.confirmation) !== ACTIVATION_CONFIRMATION) {
+        return { success: false, codexReady: false, active: true, message: 'The activation confirmation is missing. Call this tool immediately after the visible BetterLoop ON activation.' }
+      }
+      return {
+        success: true,
+        codexReady: true,
+        active: true,
+        mode: 'mcp-stdio',
+        registeredTools: tools.map((tool) => tool.name),
+        message: 'The BetterLoop host is active and its continuity tools are executable for this page session. Continue with betterloop_start for the original task. The optional Stop hook is a separate readiness check.',
+      }
+    },
   },
   {
     name: 'betterloop_hook_ready',
