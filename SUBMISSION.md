@@ -32,7 +32,7 @@ The exact neutral-English narration, timing map, and free TTS instructions are i
 
 ## WebMCP implementation
 
-BetterLoop calls document.modelContext.registerTool after the explicit ON click. Tools are schema-defined and meaningful to an agent: they return state, evidence requirements, next actions, and continuation instructions rather than asking the agent to scrape the dashboard. The `betterloop_hook_ready` tool is the explicit page-side confirmation after Codex's trusted `SessionStart` hook runs.
+BetterLoop calls document.modelContext.registerTool after the explicit ON click and waits for the registration promises to settle. It then checks the visible catalog and exposes `betterloop_activation_check` with an explicit instruction for Codex to verify the registered tools before claiming readiness. Tools are schema-defined and meaningful to an agent: they return state, evidence requirements, next actions, and continuation instructions rather than asking the agent to scrape the dashboard. The `betterloop_hook_ready` tool remains the separate page-side confirmation after Codex's trusted `SessionStart` hook runs.
 
 The local STDIO MCP is the model-compatible fallback when native model context is unavailable. In a WebMCP-capable Codex browser, the native context remains the preferred page channel; both routes share the same user activation and continuity behavior. The Vercel page supplies the UI; the judge’s trusted agent environment supplies the local MCP process.
 

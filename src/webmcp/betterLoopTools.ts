@@ -19,11 +19,49 @@ import { getModelContext, getWebMCPMode } from './polyfill'
 let registered = false
 let controllers: AbortController[] = []
 let hostHookReady = false
+let registrationVerified = false
+let codexActivationVerified = false
 
 const SESSION_START_PROOF = 'session_start_hook_confirmed'
+const ACTIVATION_CONFIRMATION = 'user_clicked_betterloop_on'
 
 const text = (value: unknown, fallback = ''): string => typeof value === 'string' ? value : fallback
 const bool = (value: unknown): boolean => value === true
+
+function toolName(value: unknown): string {
+  if (typeof value === 'string') return value
+  if (!value || typeof value !== 'object') return ''
+  return text((value as { name?: unknown }).name)
+}
+
+export async function verifyBetterLoopToolRegistration(): Promise<{ verified: boolean; visibleTools: string[]; missingTools: string[] }> {
+  const expectedTools = tools.map((tool) => tool.name)
+  const modelContext = getModelContext()
+  let visibleTools: string[] = []
+
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    try {
+      if (typeof modelContext.getTools !== 'function') {
+        registrationVerified = registered
+        return { verified: registrationVerified, visibleTools: [], missingTools: registrationVerified ? [] : expectedTools }
+      }
+      const result = await Promise.resolve(modelContext.getTools())
+      if (Array.isArray(result)) visibleTools = result.map(toolName).filter(Boolean)
+      const missingTools = expectedTools.filter((name) => !visibleTools.includes(name))
+      if (missingTools.length === 0) {
+        registrationVerified = true
+        return { verified: true, visibleTools, missingTools: [] }
+      }
+    } catch {
+      // Native tool discovery can settle asynchronously; retry before reporting a real failure.
+    }
+    if (attempt < 7) await new Promise((resolve) => window.setTimeout(resolve, 200))
+  }
+
+  const missingTools = expectedTools.filter((name) => !visibleTools.includes(name))
+  registrationVerified = false
+  return { verified: false, visibleTools, missingTools }
+}
 
 function disabledResult(tool: string) {
   return {
@@ -86,6 +124,38 @@ function schema(properties: Record<string, unknown>, required: string[] = []) {
 
 const tools: WebMCPTool[] = [
   {
+    name: 'betterloop_activation_check',
+    title: 'Verify BetterLoop activation',
+    description: 'MANDATORY after the user presses Turn BetterLoop ON: call this tool immediately to verify that Codex can see and execute the newly registered BetterLoop tools. Do not claim activation is complete until this returns success. Use confirmation "user_clicked_betterloop_on".',
+    inputSchema: schema({ confirmation: { type: 'string', enum: [ACTIVATION_CONFIRMATION], description: 'Confirms the visible user activation that triggered this registration check.' } }, ['confirmation']),
+    execute: async (input) => {
+      if (!getStore().settings.enabled) return disabledResult('betterloop_activation_check')
+      if (text(input.confirmation) !== ACTIVATION_CONFIRMATION) {
+        return { success: false, codexReady: false, message: 'The activation confirmation is missing. Call this tool immediately after the visible BetterLoop ON activation.' }
+      }
+      const registration = await verifyBetterLoopToolRegistration()
+      if (!registration.verified) {
+        return {
+          success: false,
+          codexReady: false,
+          registered: registered,
+          visibleTools: registration.visibleTools,
+          missingTools: registration.missingTools,
+          message: 'Codex cannot yet verify all BetterLoop page tools. Refresh the embedded page or inspect the current page tools, then call betterloop_activation_check again.',
+        }
+      }
+      codexActivationVerified = true
+      window.dispatchEvent(new CustomEvent('betterloop:activation-verified'))
+      return {
+        success: true,
+        codexReady: true,
+        registered: true,
+        visibleTools: registration.visibleTools,
+        message: 'Codex verified that BetterLoop tools are registered and executable for this page session. Continue with betterloop_start for the original task. The optional Stop hook is a separate host readiness check.',
+      }
+    },
+  },
+  {
     name: 'betterloop_hook_ready',
     title: 'Confirm Codex hook is loaded',
     description: 'Call this only after Codex has received BetterLoop’s SessionStart hook context. It confirms to the page that the trusted host hook is loaded; do not call it based on the page alone.',
@@ -100,7 +170,9 @@ const tools: WebMCPTool[] = [
         }
       }
       hostHookReady = true
+      codexActivationVerified = true
       window.dispatchEvent(new CustomEvent('betterloop:hook-ready'))
+      window.dispatchEvent(new CustomEvent('betterloop:activation-verified'))
       return {
         success: true,
         hostHookReady: true,
@@ -251,15 +323,16 @@ const tools: WebMCPTool[] = [
   },
 ]
 
-export async function registerBetterLoopTools(): Promise<{ mode: string; count: number }> {
-  if (registered) return { mode: getWebMCPMode(), count: tools.length }
+export async function registerBetterLoopTools(): Promise<{ mode: string; count: number; verified: boolean; missingTools: string[] }> {
+  if (registered) return { mode: getWebMCPMode(), count: tools.length, verified: registrationVerified, missingTools: [] }
   const modelContext = getModelContext()
-  if (!modelContext) return { mode: getWebMCPMode(), count: 0 }
+  if (!modelContext) return { mode: getWebMCPMode(), count: 0, verified: false, missingTools: tools.map((tool) => tool.name) }
   controllers = tools.map(() => new AbortController())
-  tools.forEach((tool, index) => modelContext.registerTool(tool, { signal: controllers[index].signal }))
+  await Promise.all(tools.map((tool, index) => Promise.resolve(modelContext.registerTool(tool, { signal: controllers[index].signal }))))
   registered = true
+  const verification = await verifyBetterLoopToolRegistration()
   window.dispatchEvent(new CustomEvent('betterloop:registered'))
-  return { mode: getWebMCPMode(), count: tools.length }
+  return { mode: getWebMCPMode(), count: tools.length, verified: verification.verified, missingTools: verification.missingTools }
 }
 
 export function unregisterBetterLoopTools(): void {
@@ -270,6 +343,8 @@ export function unregisterBetterLoopTools(): void {
   controllers = []
   registered = false
   hostHookReady = false
+  registrationVerified = false
+  codexActivationVerified = false
   window.dispatchEvent(new CustomEvent('betterloop:registered'))
 }
 
@@ -287,6 +362,14 @@ export function getBetterLoopRegistrationMode(): string {
 
 export function isBetterLoopHookReady(): boolean {
   return hostHookReady
+}
+
+export function isBetterLoopRegistrationVerified(): boolean {
+  return registrationVerified
+}
+
+export function isBetterLoopActivationVerified(): boolean {
+  return codexActivationVerified
 }
 
 export function prepareDemoQuota(): LoopRun | null {

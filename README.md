@@ -25,7 +25,7 @@ The dashboard makes the loop visible: active features, current phase, verificati
 
 The public page is a working interactive demo even without a local agent. Open https://betterloop-akunimal.vercel.app, press `Turn BetterLoop ON`, confirm the feature toggles, and press `Start guided demo`. The manual controls exercise the core continuity flow: failed evidence, quota pause, recovery, and `100% verified`. This route proves the product behavior without requiring an account, API key, database, or local setup.
 
-For the full agent-integrated path, use the repository from a trusted Codex project. Codex loads `.codex/config.toml` and `.codex/hooks.json`; after the one-time trust/restart step, open the public page in the embedded browser and press `Turn BetterLoop ON`. The strip should show `Host MCP — Connected / Luna ready` on the current Codex configuration, or the equivalent connected standard-MCP state on another MCP-capable host. Ask the agent to call `betterloop_start` with the exact original task; the resulting run appears in the visual log.
+For the full agent-integrated path, use the repository from a trusted Codex project. Codex loads `.codex/config.toml` and `.codex/hooks.json`; after the one-time trust/restart step, open the public page in the embedded browser and press `Turn BetterLoop ON`. The button registers the page tools, then exposes a mandatory `betterloop_activation_check` instruction so Codex verifies the catalog before the page reports it ready. The strip should show `Host MCP — Connected / Luna ready` on the current Codex configuration, or the equivalent connected standard-MCP state on another MCP-capable host. Ask the agent to call `betterloop_start` with the exact original task; the resulting run appears in the visual log.
 
 The host path is intentionally split: Vercel serves the visible page, while the local MCP process runs inside the judge’s agent environment. A public page cannot start a Node process on a judge’s computer by itself. See [JUDGE_GUIDE.md](JUDGE_GUIDE.md) for the complete reproducible route.
 
@@ -62,7 +62,7 @@ This is deliberately a conservative heuristic, not a claim that every model or a
 
 ## WebMCP and Codex integration
 
-The page uses document.modelContext.registerTool, the WebMCP site-tool contract. In a WebMCP-capable Codex browser, the tools are discoverable after the user visits the page and activates it. Outside that environment, the app keeps a local polyfill so the public demo remains interactive and testable.
+The page uses document.modelContext.registerTool, the WebMCP site-tool contract. In a WebMCP-capable Codex browser, the ON button waits for registration, checks the visible tool catalog, and exposes a mandatory `betterloop_activation_check` that Codex must call immediately. The page only reports Codex verification after that tool executes successfully. Outside that environment, the app keeps a local polyfill so the public demo remains interactive and testable.
 
 The optional Stop hook is a host-side Codex integration. A webpage cannot silently install a hook, change Codex approval policy, or wake a closed Codex session. Project hooks require Codex trust review and may require opening a new session or restarting the current one. BetterLoop also registers a `SessionStart` hook so Codex can announce the host integration to the model.
 
@@ -103,7 +103,7 @@ The hook can be disabled without changing the app:
 
 or with a local .betterloop/config.json based on config.example.json. The committed example is intentionally not a secret and contains no credentials.
 
-The hook is additive, not a replacement for the MCP tools. If it is not loaded, the page and host MCP still work; the UI says `restart Codex` and does not claim automatic Stop-turn continuation is ready.
+The hook is additive, not a replacement for the MCP tools. If it is not loaded, the page and host MCP still work; the UI separates `Codex tools verified` from `Codex hook confirmed` so it does not claim automatic Stop-turn continuation is ready without the trusted hook.
 
 ## Scope and safety
 

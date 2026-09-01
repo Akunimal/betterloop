@@ -22,10 +22,11 @@ Use this route when evaluating whether an agent can consume the tools.
 2. Confirm Node.js 18+ is available, then run `npm install` and `npm run verify`.
 3. Restart or reopen the Codex task after reviewing the project MCP and hook configuration. The project files are `.codex/config.toml` and `.codex/hooks.json`; no global configuration is required.
 4. Open the public page in Codex’s embedded browser and press `Turn BetterLoop ON`.
-5. Confirm the capability strip reports a connected `Host MCP`. The visible button is the explicit consent gate; before it, the host is connected but dormant.
-6. Ask the agent to call `betterloop_host_status`, then `betterloop_start` with the exact original task.
-7. Ask it to save a checkpoint with `betterloop_checkpoint`, and if it encounters uncertainty, use `betterloop_research_blocker` only after trying a workaround and collecting alternatives.
-8. Ask it to verify evidence with `betterloop_verify_completion`, and close only through `betterloop_finish`.
+5. Let Codex call the newly exposed `betterloop_activation_check`. The page reports `Codex verified BetterLoop tools` only after that tool returns success.
+6. Confirm the capability strip reports a connected `Host MCP`. The visible button is the explicit consent gate; before it, the host is connected but dormant.
+7. Ask the agent to call `betterloop_host_status`, then `betterloop_start` with the exact original task.
+8. Ask it to save a checkpoint with `betterloop_checkpoint`, and if it encounters uncertainty, use `betterloop_research_blocker` only after trying a workaround and collecting alternatives.
+9. Ask it to verify evidence with `betterloop_verify_completion`, and close only through `betterloop_finish`.
 
 Expected result: the page labels the run `CODEX HOST RUN`, displays the agent’s checkpoints and events, and updates while the MCP changes state. If the agent attempts to finish with missing or failed evidence, the tool returns a continuation instruction. If it reports a quota limit, `betterloop_report_quota` stores the five-hour fallback and `betterloop_resume` continues when the window is available. For a fast recording, provide a retry timestamp that is already available instead of waiting five hours.
 
@@ -44,7 +45,9 @@ Then open the same public page, press `Turn BetterLoop ON`, and have the model d
 - `Waiting for activation`: BetterLoop is OFF; no continuity action is enabled.
 - `Connected / dormant`: the MCP process exists, but the user has not pressed ON.
 - `Connected / Luna ready`: the current Codex host has the standard fallback connected and the page session is active.
-- `Not ready / restart Codex`: the optional project hook has not been loaded. The agent can still use the host MCP if it is connected; automatic Stop-hook continuation waits for the restart/trust step.
+- `Activation sent / Codex checking`: the ON click registered the page tools and is waiting for Codex to execute `betterloop_activation_check`.
+- `Tools verified / hook optional`: Codex can use the page tools; automatic Stop-hook continuation still waits for the normal hook trust/restart step.
+- `Ready / hook confirmed`: the optional project hook delivered its trusted `SessionStart` proof and the page confirmed it.
 
 ## Safety and scope
 

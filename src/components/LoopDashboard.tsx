@@ -12,8 +12,10 @@ import {
 import {
   getBetterLoopRegistrationMode,
   getBetterLoopToolNames,
+  isBetterLoopActivationVerified,
   isBetterLoopHookReady,
   isBetterLoopRegistered,
+  isBetterLoopRegistrationVerified,
   prepareDemoQuota,
   registerBetterLoopTools,
   unregisterBetterLoopTools,
@@ -93,6 +95,8 @@ export function LoopDashboard() {
   const [registered, setRegistered] = useState(isBetterLoopRegistered())
   const [mode, setMode] = useState(getBetterLoopRegistrationMode())
   const [hookReady, setHookReady] = useState(isBetterLoopHookReady())
+  const [activationVerified, setActivationVerified] = useState(isBetterLoopActivationVerified())
+  const [registrationVerified, setRegistrationVerified] = useState(isBetterLoopRegistrationVerified())
   const [hostStatus, setHostStatus] = useState<BetterLoopHostStatus>({ success: false, hostConnected: false, active: false, mode: 'unavailable' })
   const [message, setMessage] = useState('')
   const lastEventId = useRef<string | null>(null)
@@ -102,19 +106,24 @@ export function LoopDashboard() {
   const hostRunVisible = !run && Boolean(hostStatus.run)
   const activeFeatureCount = enabled ? Object.values(features).filter(Boolean).length : 0
   const toolNames = useMemo(() => getBetterLoopToolNames(), [])
+  const codexReady = activationVerified || hookReady || hostStatus.active
 
   useEffect(() => {
     const updateRegistration = () => {
       setRegistered(isBetterLoopRegistered())
       setMode(getBetterLoopRegistrationMode())
       setHookReady(isBetterLoopHookReady())
+      setActivationVerified(isBetterLoopActivationVerified())
+      setRegistrationVerified(isBetterLoopRegistrationVerified())
     }
     window.addEventListener('betterloop:registered', updateRegistration)
     window.addEventListener('betterloop:hook-ready', updateRegistration)
+    window.addEventListener('betterloop:activation-verified', updateRegistration)
     updateRegistration()
     return () => {
       window.removeEventListener('betterloop:registered', updateRegistration)
       window.removeEventListener('betterloop:hook-ready', updateRegistration)
+      window.removeEventListener('betterloop:activation-verified', updateRegistration)
     }
   }, [])
 
@@ -151,11 +160,14 @@ export function LoopDashboard() {
       const host = await activateBetterLoopHost(nextSettings.features)
       setHostStatus(host)
       const result = await registerBetterLoopTools()
+      setRegistrationVerified(result.verified)
       setMessage(host.active
         ? 'BetterLoop is live. The Luna-compatible host MCP is connected for this temporary session.'
-        : result.count
-          ? 'BetterLoop is live. Codex can discover the continuity tools on this page.'
-          : 'BetterLoop is on. Restart or reopen Codex to connect the host MCP.')
+        : result.verified
+          ? 'BetterLoop tools are registered. Codex has been asked to run the activation check now.'
+          : result.count
+            ? 'Activation sent to Codex. Waiting for Codex to verify the registered tools.'
+            : 'BetterLoop is on. Restart or reopen Codex to connect the host MCP.')
     } else {
       await deactivateBetterLoopHost()
       unregisterBetterLoopTools()
@@ -254,11 +266,11 @@ export function LoopDashboard() {
           <div><span className="strip-label">WebMCP</span><strong>{registered ? 'Tools registered' : 'Waiting for activation'}</strong></div>
           <div><span className="strip-label">Mode</span><strong>{mode === 'polyfill' ? 'Local demo bridge' : mode === 'native' ? 'Native site tools' : 'Unavailable'}</strong></div>
           <div><span className="strip-label">Host MCP</span><strong>{!enabled ? 'Waiting for activation' : hostStatus.active ? 'Connected / Luna ready' : hostStatus.hostConnected ? 'Connected / dormant' : 'Not connected / restart Codex'}</strong></div>
-          <div><span className="strip-label">Codex hook</span><strong>{!enabled ? 'Waiting for activation' : hookReady ? 'Ready / Codex confirmed' : 'Not ready / restart Codex'}</strong></div>
+          <div><span className="strip-label">Codex hook</span><strong>{!enabled ? 'Waiting for activation' : hookReady ? 'Ready / hook confirmed' : activationVerified ? 'Tools verified / hook optional' : registrationVerified ? 'Checking activation' : 'Waiting for Codex'}</strong></div>
         </section>
 
-        <section className={'notice-card hook-banner ' + (!enabled ? 'is-idle' : (hookReady || hostStatus.active) ? 'is-ready' : 'is-pending')} role={enabled && !hookReady && !hostStatus.active ? 'alert' : undefined}>
-          <span className="notice-icon">{!enabled ? 'i' : (hookReady || hostStatus.active) ? '✓' : '!'}</span>
+        <section className={'notice-card hook-banner ' + (!enabled ? 'is-idle' : codexReady ? 'is-ready' : 'is-pending')} role={enabled && !codexReady ? 'alert' : undefined}>
+          <span className="notice-icon">{!enabled ? 'i' : codexReady ? '✓' : '!'}</span>
           <div>
             <strong>{!enabled
               ? 'One-click activation, host-level continuation.'
@@ -266,14 +278,22 @@ export function LoopDashboard() {
                 ? 'READY: Luna-compatible BetterLoop MCP is connected.'
                 : hookReady
                   ? 'READY: Codex confirmed the BetterLoop hook.'
-                  : 'NOT READY: Codex still needs to load the BetterLoop hook.'}</strong>
+                  : activationVerified
+                    ? 'READY: Codex verified BetterLoop tools.'
+                    : registrationVerified
+                      ? 'ACTIVATION SENT: Codex is checking BetterLoop.'
+                      : 'ACTIVATION PENDING: BetterLoop is waiting for Codex.'}</strong>
             <p>{!enabled
               ? 'After the ON click, the page exposes WebMCP tools and asks the local BetterLoop MCP to open a temporary host session.'
               : hostStatus.active && !hookReady
                 ? 'The local STDIO MCP is connected, so Luna can use BetterLoop now even without native WebMCP. The optional Stop hook still needs its normal Codex trust if you want automatic turn blocking.'
               : hookReady
                 ? 'Codex delivered the trusted SessionStart hook signal and confirmed it through WebMCP. Automatic “Continue” and the “Is the job 100% done?” check are ready for this page session.'
-                : 'WebMCP is active on this page, but automatic “Continue” and the “Is the job 100% done?” check will not run until Codex trusts the project hook, receives its SessionStart signal, and confirms it here. Review the hook, then restart or reopen Codex so the change is loaded.'}</p>
+                : activationVerified
+                  ? 'Codex called the activation check and verified that the page tools are registered and executable. The optional Stop hook adds automatic turn blocking after its normal project trust.'
+                  : registrationVerified
+                    ? 'The ON button registered BetterLoop and requested Codex to call betterloop_activation_check. The page will turn READY only after Codex performs that check.'
+                    : 'The page is ready to register its tools, but Codex has not acknowledged the activation yet. Keep this page in the Codex browser context so Codex can inspect the newly registered tools.'}</p>
           </div>
         </section>
 

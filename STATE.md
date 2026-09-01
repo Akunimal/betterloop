@@ -10,7 +10,7 @@ The app is a polished WebMCP demo for agent continuity. The old file-transfer pr
 - Explicit ON/OFF activation with default OFF.
 - Native WebMCP registration through document.modelContext when the Codex host exposes Site Tools.
 - Local WebMCP polyfill for visible demos outside a native host.
-- Nine page continuity tools plus a project-scoped, model-compatible STDIO MCP host with the same continuity contract.
+- Ten page continuity tools, including the activation handshake, plus a project-scoped, model-compatible STDIO MCP host with the same continuity contract.
 - Compact control surface with grouped feature toggles.
 - Optional Auto-continue and “Is the job 100% done?” behavior.
 - Five-hour quota recovery heuristic without blocking the browser.
@@ -18,6 +18,7 @@ The app is a polished WebMCP demo for agent continuity. The old file-transfer pr
 - Local visual event timeline.
 - Project-local Codex Stop hook with stop_hook_active loop protection.
 - Capability-aware post-activation status: native WebMCP, connected host MCP, or a truthful restart-required state.
+- Activation handshake that waits for WebMCP registration, asks Codex to call `betterloop_activation_check`, and separates tool verification from optional Stop-hook readiness.
 - Public interactive demo plus a reproducible judge guide for the full agent-integrated path.
 
 ## Known boundary
