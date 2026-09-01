@@ -3,16 +3,17 @@
 ## Before recording
 
 1. Start `npm run companion` in a local terminal.
-2. Open MCPation in Codex’s browser and select **Start local scan** yourself.
-3. Confirm the page shows the inventory and findings.
+2. Open MCPation in Codex’s browser and select **Scan Codex setup** yourself.
+3. Confirm the page shows the inventory, findings, and glow-up recommendations.
 4. Use a model/browser context that supports native WebMCP tool execution.
 
 ## Prompt for Codex
 
 ```text
 Use the active MCPation WebMCP tools for a read-only diagnostic demonstration.
-First call mcpation_scan_environment, then mcpation_get_inventory and mcpation_get_findings.
+First call mcpation_scan_environment, then mcpation_get_inventory, mcpation_get_findings, and mcpation_get_recommendations.
 Summarize only the detected MCP health findings; do not expose secrets, full paths, environment values, headers, or file contents.
+Explain the evidence-based Codex, shell, Git Bash, or WSL recommendations as suggestions, never as installed or automatically applied changes.
 Then call mcpation_plan_cleanup and explain which proposals require manual review. Do not apply any configuration change.
 Keep the visible explanation concise and in neutral English.
 ```

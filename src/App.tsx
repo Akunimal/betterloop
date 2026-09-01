@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { applySupervisedFixes, buildFixPlan, getLatestScan, getMCPationMode, registerMCPationTools, startConsentSession, toolNames, type ScanResult } from './mcpation'
+import { applySupervisedFixes, buildFixPlan, getLatestScan, registerMCPationTools, startConsentSession, toolNames, type ScanResult } from './mcpation'
 import './mcpation.css'
 
 export default function App() {
@@ -9,7 +9,6 @@ export default function App() {
   const [message, setMessage] = useState('Ready for a local scan.')
   const [showPlan, setShowPlan] = useState(false)
   const [selectedFixes, setSelectedFixes] = useState<string[]>([])
-  const mode = getMCPationMode()
   const issues = useMemo(() => scan?.findings.filter((finding) => finding.severity !== 'healthy').length || 0, [scan])
 
   useEffect(() => {

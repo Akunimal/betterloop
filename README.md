@@ -1,10 +1,10 @@
 # MCPation
 
-**Know what your agent can call.** MCPation is a consent-first MCP environment doctor. A WebMCP page gives an agent a structured, sanitized view of the local MCP configuration only after the user explicitly starts a temporary scan.
+**Clean up MCPs. Fix environment friction. Upgrade the Codex setup.** MCPation is a consent-first, Codex-first environment doctor. A WebMCP page gives an agent a structured, sanitized view of the local MCP configuration only after the user explicitly starts a temporary scan.
 
 ## Why this exists
 
-MCP tools accumulate across Codex, Claude Desktop, Cursor, Windsurf, VS Code, Cline, Roo Code, and Zed. The result is often duplicate servers, disabled entries, invalid endpoints, missing commands, and no clear inventory. MCPation makes that environment visible without exposing tokens or silently changing anything.
+MCP tools accumulate across Codex and companion environments such as Claude Desktop, Cursor, Windsurf, VS Code, Cline, Roo Code, and Zed. The result is often duplicate servers, disabled entries, invalid endpoints, missing commands, shell friction, and no clear inventory. MCPation makes that environment visible without exposing tokens or silently changing anything.
 
 ## WebMCP tools
 
@@ -13,6 +13,7 @@ MCP tools accumulate across Codex, Claude Desktop, Cursor, Windsurf, VS Code, Cl
 - `mcpation_get_findings` — inspect gaps, broken commands, policies, and configuration issues.
 - `mcpation_get_environment_matrix` — compare configured server coverage and known MCP access policy by IDE.
 - `mcpation_get_host_profile` — flag shell compatibility and quoting risk without exposing local paths.
+- `mcpation_get_recommendations` — read prioritized cleanup, compatibility, coverage, and performance recommendations.
 - `mcpation_plan_cleanup` — produce a review-only cleanup plan.
 
 ## Local companion
@@ -31,9 +32,9 @@ The companion listens only on `127.0.0.1:4318`, accepts only MCPation or localho
 
 1. Start logged in with the MCPation page open in Codex.
 2. Run `npm run companion` locally.
-3. Select **Start local scan**.
-4. Let Codex call `mcpation_scan_environment`, then `mcpation_get_findings`.
-5. Show the inventory and call `mcpation_plan_cleanup` to produce the supervised plan.
+3. Select **Scan Codex setup**.
+4. Let Codex call `mcpation_scan_environment`, then `mcpation_get_findings` and `mcpation_get_recommendations`.
+5. Show the inventory, environment compatibility, and call `mcpation_plan_cleanup` to produce the supervised plan.
 6. Show the supervised plan only. Do not apply a change in the demo.
 
 The agent uses the webpage’s WebMCP tools; the local companion only supplies the permitted operating-system boundary.
