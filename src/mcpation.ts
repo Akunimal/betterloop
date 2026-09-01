@@ -16,7 +16,7 @@ let registered = false
 async function request<T>(path: string, init?: RequestInit): Promise<T> { const response = await fetch(baseUrl + path, { ...init, headers: { 'content-type': 'application/json', ...(sessionToken ? { 'x-mcpation-session': sessionToken } : {}), ...(init?.headers || {}) } }); const body = await response.json().catch(() => ({ error: 'The local companion returned an invalid response.' })); if (!response.ok) throw new Error(body.error || 'The local companion is unavailable.'); return body as T }
 function normalizeScan(raw: Partial<ScanResult>): ScanResult {
   const servers = Array.isArray(raw.servers) ? raw.servers : []
-  const platform = raw.platform || 'unknown'
+  const platform = raw.platform || 'local machine'
   const legacyProfiles = [...new Set(servers.map((server) => server.source))].map((name) => ({ name, configuredServers: servers.filter((server) => server.source === name).map((server) => server.name), mcpAccess: 'unknown', discovery: 'unknown' as const }))
   return {
     schemaVersion: raw.schemaVersion || 1,
