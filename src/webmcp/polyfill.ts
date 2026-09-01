@@ -5,23 +5,23 @@ export interface ModelContextLike {
   getTools: (options?: { fromOrigins?: string[] }) => Promise<unknown[]> | unknown[]
   executeTool?: (tool: unknown, input?: Record<string, unknown>, options?: { signal?: AbortSignal }) => Promise<unknown>
   unregisterTool?: (name: string) => void
-  __betterLoopPolyfill?: boolean
+  __mcpationPolyfill?: boolean
 }
 
-type BetterLoopDocument = Document & { modelContext?: ModelContextLike }
+type MCPationDocument = Document & { modelContext?: ModelContextLike }
 
 class LocalModelContext implements ModelContextLike {
-  readonly __betterLoopPolyfill = true
+  readonly __mcpationPolyfill = true
   private tools = new Map<string, WebMCPTool>()
 
   async registerTool(tool: WebMCPTool): Promise<void> {
     this.tools.set(tool.name, tool)
-    window.dispatchEvent(new CustomEvent('betterloop:registered'))
+    window.dispatchEvent(new CustomEvent('mcpation:registered'))
   }
 
   unregisterTool(name: string): void {
     this.tools.delete(name)
-    window.dispatchEvent(new CustomEvent('betterloop:registered'))
+    window.dispatchEvent(new CustomEvent('mcpation:registered'))
   }
 
   getTools(): WebMCPTool[] {
@@ -33,14 +33,14 @@ class LocalModelContext implements ModelContextLike {
   }
 }
 
-const page = document as BetterLoopDocument
+const page = document as MCPationDocument
 const nativeModelContext = page.modelContext
 
 if (!nativeModelContext) {
   page.modelContext = new LocalModelContext()
-  console.info('[BetterLoop] Local WebMCP fallback active. Native discovery is unavailable in this browser.')
+  console.info('[MCPation] Local WebMCP fallback active. Native discovery is unavailable in this browser.')
 } else {
-  console.info('[BetterLoop] Native document.modelContext detected.')
+  console.info('[MCPation] Native document.modelContext detected.')
 }
 
 export function getModelContext(): ModelContextLike {
@@ -49,5 +49,5 @@ export function getModelContext(): ModelContextLike {
 
 export function getWebMCPMode(): 'native' | 'polyfill' | 'none' {
   if (!page.modelContext) return 'none'
-  return page.modelContext.__betterLoopPolyfill ? 'polyfill' : 'native'
+  return page.modelContext.__mcpationPolyfill ? 'polyfill' : 'native'
 }

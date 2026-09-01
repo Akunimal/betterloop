@@ -1,14 +1,14 @@
 {
-  "name": "betterloop",
+  "name": "mcpation",
   "version": "1.0.0",
-  "description": "WebMCP and MCP continuity layer that helps agents verify and continue long-running tasks",
+  "description": "A consent-first WebMCP environment doctor for local MCP configurations",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "host:mcp": "node scripts/betterloop-mcp.cjs",
-    "verify": "npm run build && npx tsc --noEmit && node scripts/final-check.cjs && node scripts/betterloop-mcp.cjs --self-test && node scripts/betterloop-stop.cjs --self-test"
+    "companion": "node scripts/mcpation-companion.cjs",
+    "verify": "npm run build && npx tsc --noEmit && node scripts/final-check.cjs && node scripts/mcpation-companion.cjs --self-test"
   },
   "dependencies": {
     "react": "^18.3.1",

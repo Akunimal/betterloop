@@ -1,6 +1,22 @@
-import { LoopDashboard } from './components/LoopDashboard'
-import './styles.css'
+import { useEffect, useState } from 'react'
+import { getLatestScan, getMCPationMode, registerMCPationTools, startConsentSession, toolNames, type ScanResult } from './mcpation'
+import './mcpation.css'
 
 export default function App() {
-  return <LoopDashboard />
+  const [scan, setScan] = useState<ScanResult | null>(getLatestScan())
+  const [registered, setRegistered] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [message, setMessage] = useState('Ready to register WebMCP tools.')
+  const mode = getMCPationMode()
+  useEffect(() => { const refresh = (event: Event) => setScan((event as CustomEvent<ScanResult>).detail || getLatestScan()); window.addEventListener('mcpation:scan', refresh); void registerMCPationTools().then(() => { setRegistered(true); setMessage('WebMCP tools are registered for this page.') }).catch(() => setMessage('WebMCP registration is waiting for this browser context.')); return () => window.removeEventListener('mcpation:scan', refresh) }, [])
+  const scanNow = async () => { setBusy(true); try { const result = await startConsentSession(); setScan(result); setMessage(`Scan complete: ${result.servers.length} MCP entries across ${result.sources.length} configuration sources.`) } catch (error) { setMessage(error instanceof Error ? error.message : 'Could not reach the local companion.') } finally { setBusy(false) } }
+  return <main className="shell">
+    <header className="topline"><div className="wordmark"><span className="mark">M</span><strong>MCPation</strong><span>LOCAL MCP DOCTOR</span></div><div className={'webmcp-state ' + (registered ? 'ready' : '')}><i />{registered ? 'WebMCP ready' : 'Registering tools'}</div></header>
+    <section className="hero"><div><p className="kicker">CONSENT-FIRST ENVIRONMENT HEALTH</p><h1>Know what your<br /><em>agent can call.</em></h1><p className="lede">MCPation gives Codex a safe, structured view of the local MCP environment—without exposing secrets or changing a single configuration.</p></div><aside className="scan-box"><span className="scan-label">LOCAL COMPANION</span><h2>{scan ? 'Environment scanned' : 'Scan this machine'}</h2><p>{scan ? 'This temporary session only returned redacted configuration metadata.' : 'Start the companion once, then explicitly approve a local scan from this page.'}</p><button onClick={() => void scanNow()} disabled={busy}>{busy ? 'Scanning…' : scan ? 'Scan again' : 'Start local scan'} <b>→</b></button><code>npm run companion</code></aside></section>
+    <section className="status-strip"><div><small>WEBMCP</small><strong>{mode === 'native' ? 'Native site tools' : 'Local development bridge'}</strong></div><div><small>PRIVACY</small><strong>Secrets stay local</strong></div><div><small>MODE</small><strong>Read-only diagnosis</strong></div><div><small>TOOLS</small><strong>{toolNames.length} available to Codex</strong></div></section>
+    <section className="agent-proof"><span className="pulse" /><div><strong>Agent-ready diagnostic surface</strong><p>{message}</p></div></section>
+    <section className="guide"><div><p className="kicker">WHAT CODEX CAN ASK</p><h2>One page. Four useful tools.</h2></div><div className="tool-grid">{[['Scan environment','Request the approved, redacted local inventory.'],['Read inventory','See sources, transports, disabled state, and availability.'],['Read findings','Find duplicates, stale entries, and missing executables.'],['Plan cleanup','Create a review-only plan; never auto-edit configuration.']].map(([title, detail], index) => <article key={title}><span>0{index + 1}</span><strong>{title}</strong><p>{detail}</p></article>)}</div></section>
+    <section className="results" aria-live="polite"><div className="results-heading"><div><p className="kicker">CONSENTED INVENTORY</p><h2>{scan ? `${scan.servers.length} MCP entries found` : 'Waiting for a local scan'}</h2></div>{scan && <small>{new Date(scan.scannedAt).toLocaleString()}</small>}</div>{!scan ? <div className="empty"><span>↗</span><p>Run the local companion, then select <b>Start local scan</b>. Codex can use the same result through the registered WebMCP tools.</p></div> : <div className="scan-results"><div className="inventory">{scan.servers.map((server) => <article key={server.id}><div><strong>{server.name}</strong><small>{server.source} · {server.transport}</small></div><div className="server-meta"><span>{server.disabled ? 'Disabled' : server.available === false ? 'Unavailable' : 'Available'}</span><small title={server.configPath}>{server.target}</small></div></article>)}</div><div className="findings">{scan.findings.map((finding, index) => <article className={finding.severity} key={index}><span>{finding.severity}</span><strong>{finding.title}</strong><p>{finding.detail}</p></article>)}</div></div>}</section>
+    <footer>MCPation never returns environment variables, headers, tokens, or file contents. It proposes; the user decides.</footer>
+  </main>
 }
