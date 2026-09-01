@@ -5,7 +5,7 @@ export type FindingSeverity = 'healthy' | 'attention' | 'review'
 export interface MCPServer { id: string; name: string; source: string; transport: 'stdio' | 'http'; target: string; disabled: boolean; available?: boolean }
 export interface Finding { severity: FindingSeverity; title: string; detail: string }
 export interface FixProposal { id: string; title: string; detail: string; kind: 'remove-json-entry' | 'manual-review'; canApply: boolean }
-export interface ScanResult { scannedAt: string; sources: string[]; servers: MCPServer[]; findings: Finding[]; proposals: FixProposal[]; privacy: string }
+export interface ScanResult { scannedAt: string; platform: string; sources: string[]; supportedSources: string[]; servers: MCPServer[]; findings: Finding[]; proposals: FixProposal[]; privacy: string }
 
 const baseUrl = 'http://127.0.0.1:4318'
 let sessionToken = ''
@@ -21,7 +21,7 @@ export function buildFixPlan(scan: ScanResult) { return { automaticChanges: 0, r
 const tools: WebMCPTool[] = [
   { name: 'mcpation_scan_environment', title: 'Scan the consented MCP environment', description: 'Reads the user-approved, redacted inventory from MCPation’s local companion. It never returns secrets, environment values, or headers.', inputSchema: { type: 'object', properties: {} }, execute: async () => { if (!sessionToken) throw new Error('The user has not started a local MCPation scan yet.'); latestScan = await request<ScanResult>('/scan'); window.dispatchEvent(new CustomEvent('mcpation:scan', { detail: latestScan })); return latestScan } },
   { name: 'mcpation_get_inventory', title: 'Read the sanitized MCP inventory', description: 'Returns discovered MCP names, sources, transports, disabled state, and command availability. No credentials or headers are exposed.', inputSchema: { type: 'object', properties: {} }, execute: () => requireScan().servers },
-  { name: 'mcpation_get_findings', title: 'Read MCP Doctor findings', description: 'Returns duplicate, disabled, unavailable, and review findings calculated from the consented local inventory.', inputSchema: { type: 'object', properties: {} }, execute: () => requireScan().findings },
+  { name: 'mcpation_get_findings', title: 'Read MCP Doctor findings', description: 'Returns duplicate, invalid transport, disabled, unavailable, and review findings calculated from the consented local inventory.', inputSchema: { type: 'object', properties: {} }, execute: () => requireScan().findings },
   { name: 'mcpation_plan_cleanup', title: 'Generate a safe cleanup plan', description: 'Creates a review-only cleanup plan. It never changes a configuration or disables a server.', inputSchema: { type: 'object', properties: {} }, execute: () => buildFixPlan(requireScan()) },
 ]
 export const toolNames = tools.map((tool) => tool.name)
