@@ -17,7 +17,7 @@ const sources = [
   ['Windsurf', path.join(home, '.codeium', 'windsurf', 'mcp_config.json'), 'json'],
 ]
 const id = (value) => crypto.createHash('sha256').update(value).digest('hex').slice(0, 16)
-const allowedOrigin = (origin = '') => !origin || origin === process.env.MCPATION_ALLOWED_ORIGIN || /^https:\/\/mcpation(?:-[a-z0-9-]+)?\.vercel\.app$/i.test(origin) || /^http:\/\/localhost(?::\d+)?$/i.test(origin)
+const allowedOrigin = (origin = '') => Boolean(origin) && (origin === process.env.MCPATION_ALLOWED_ORIGIN || /^https:\/\/mcpation(?:-[a-z0-9-]+)?\.vercel\.app$/i.test(origin) || /^http:\/\/localhost(?::\d+)?$/i.test(origin))
 function cors(req, res) { const origin = req.headers.origin || ''; if (allowedOrigin(origin)) res.setHeader('access-control-allow-origin', origin || '*'); res.setHeader('access-control-allow-headers', 'content-type,x-mcpation-session'); res.setHeader('access-control-allow-methods', 'GET,POST,OPTIONS') }
 function send(res, code, body) { res.writeHead(code, { 'content-type': 'application/json' }); res.end(JSON.stringify(body)) }
 function readBody(req) { return new Promise((resolve) => { let raw = ''; req.on('data', (chunk) => raw += chunk); req.on('end', () => { try { resolve(JSON.parse(raw || '{}')) } catch { resolve({}) } }) }) }

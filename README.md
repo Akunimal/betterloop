@@ -23,7 +23,7 @@ npm run companion
 npm run dev
 ```
 
-The companion listens only on `127.0.0.1:4318`, requires an explicit temporary page session, and never returns `env`, `headers`, tokens, or file contents. It reads only supported configuration locations and never edits a configuration.
+The companion listens only on `127.0.0.1:4318`, accepts only MCPation or localhost origins, requires an explicit temporary page session, and never returns `env`, `headers`, tokens, full paths, or file contents. It reads supported configuration locations and is read-only until the user selects each proposed JSON change, confirms it again, and a local backup is created first.
 
 ## Demo
 
@@ -31,6 +31,7 @@ The companion listens only on `127.0.0.1:4318`, requires an explicit temporary p
 2. Run `npm run companion` locally.
 3. Select **Start local scan**.
 4. Let Codex call `mcpation_scan_environment`, then `mcpation_get_findings`.
-5. Show the inventory and call `mcpation_plan_cleanup` to produce a review-only recommendation.
+5. Show the inventory and call `mcpation_plan_cleanup` to produce the supervised plan.
+6. If a deterministic JSON duplicate is found, show its checkbox and the backup-before-apply confirmation. Do not apply a change in the demo unless it is intentional.
 
 The agent uses the webpage’s WebMCP tools; the local companion only supplies the permitted operating-system boundary.

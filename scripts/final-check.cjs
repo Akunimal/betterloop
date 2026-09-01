@@ -1,5 +1,5 @@
 const fs = require('fs')
-const required = ['README.md', 'LICENSE', 'src/App.tsx', 'src/mcpation.ts', 'src/mcpation.css', 'src/webmcp/polyfill.ts', 'scripts/mcpation-companion.cjs']
+const required = ['README.md', 'SUBMISSION.md', 'JUDGE_GUIDE.md', 'VIDEO_SCRIPT_EN.md', 'DEMO_RUNBOOK.md', 'LICENSE', 'src/App.tsx', 'src/mcpation.ts', 'src/mcpation.css', 'src/webmcp/polyfill.ts', 'scripts/mcpation-companion.cjs']
 let failed = false
 for (const file of required) { const ok = fs.existsSync(file); console.log(`${ok ? '✓' : '✗'} ${file}`); failed ||= !ok }
 const app = fs.readFileSync('src/mcpation.ts', 'utf8')
