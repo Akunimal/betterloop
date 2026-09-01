@@ -41,10 +41,11 @@ function signature(value) { return id(JSON.stringify({ command: value.command ||
 function hostProfile() {
   const windows = process.platform === 'win32'
   const gitBashInstalled = windows && [path.join(process.env.ProgramFiles || '', 'Git', 'bin', 'bash.exe'), path.join(process.env['ProgramFiles(x86)'] || '', 'Git', 'bin', 'bash.exe'), path.join(home, 'scoop', 'apps', 'git', 'current', 'bin', 'bash.exe')].some((candidate) => fs.existsSync(candidate))
+  const wslReady = windows && spawnSync('wsl.exe', ['--status'], { windowsHide: true, timeout: 1800, stdio: 'ignore' }).status === 0
   let codexShell = 'not explicitly configured'
   try { const match = fs.readFileSync(path.join(home, '.codex', 'config.toml'), 'utf8').match(/^\s*shell\s*=\s*["']([^"']+)["']/mi); if (match) codexShell = path.basename(match[1]) } catch { /* Codex configuration is optional. */ }
   const recommendedShell = windows ? (gitBashInstalled ? 'Git Bash for POSIX-focused commands' : 'PowerShell for Windows-native commands') : 'the system default shell'
-  return { operatingSystem: windows ? 'Windows' : process.platform === 'darwin' ? 'macOS' : 'Linux', gitBashInstalled, codexShell, recommendedShell }
+  return { operatingSystem: windows ? 'Windows' : process.platform === 'darwin' ? 'macOS' : 'Linux', gitBashInstalled, wslReady, codexShell, recommendedShell }
 }
 function parseJsonDocument(file) { const raw = fs.readFileSync(file, 'utf8'); try { return JSON.parse(raw) } catch { return JSON.parse(raw.replace(/^\s*\/\/.*$/gm, '').replace(/,\s*([}\]])/g, '$1')) } }
 function parseJson(source) {
@@ -93,8 +94,11 @@ function diagnose() {
   for (const source of errors) add('review', `${source} configuration could not be parsed`, 'MCPation did not read its contents. Repair the syntax before making any change.')
   if (!all.length && !errors.length) add('healthy', 'No readable MCP configurations found', 'No supported configuration file was found in the standard local paths for this operating system.')
   if (!findings.length) add('healthy', 'No obvious configuration conflicts', 'The read-only scan found no duplicates, disabled entries, invalid endpoints, or unavailable commands.')
+  const recommendations = proposals.map((proposal) => ({ id: proposal.id, priority: proposal.kind === 'remove-json-entry' ? 'high' : 'review', category: proposal.id.startsWith('coverage-') ? 'coverage' : proposal.id.startsWith('shell-') || proposal.id.startsWith('command-') ? 'compatibility' : 'cleanup', title: proposal.title, reason: proposal.detail, action: proposal.canApply ? 'Review the backed-up change' : 'Review with Codex' }))
+  if (host.operatingSystem === 'Windows' && !host.wslReady) recommendations.push({ id: 'upgrade-wsl', priority: 'optional', category: 'compatibility', title: 'Add WSL for Linux-first tooling', reason: 'WSL can reduce shell and path friction for MCP servers and build tools designed around Linux.', action: 'Review WSL compatibility before installing' })
+  if (host.operatingSystem === 'Windows' && host.gitBashInstalled && host.codexShell === 'not explicitly configured') recommendations.push({ id: 'upgrade-shell-policy', priority: 'review', category: 'compatibility', title: 'Choose a clear Codex shell', reason: 'Git Bash is available, but Codex has no explicit shell choice. A consistent shell reduces quoting retries.', action: 'Choose Git Bash or PowerShell per project' })
   const servers = all.map(({ key, name, label, transport, target: serverTarget, disabled, available: isAvailable }) => ({ id: key, name, source: label, transport, target: serverTarget, disabled, available: isAvailable }))
-  return { schemaVersion: 2, scannedAt: new Date().toISOString(), platform: process.platform, host, sources: found.map((source) => source.label), supportedSources: sources.map(({ label }) => label), profiles, servers, findings, proposals, privacy: 'Only server metadata is returned. Values under env and headers are never read or sent.', internal: all }
+  return { schemaVersion: 3, scannedAt: new Date().toISOString(), platform: process.platform, host, sources: found.map((source) => source.label), supportedSources: sources.map(({ label }) => label), profiles, servers, findings, proposals, recommendations, privacy: 'Only server metadata is returned. Values under env and headers are never read or sent.', internal: all }
 }
 function sessionFor(req) { const token = req.headers['x-mcpation-session']; const session = typeof token === 'string' ? sessions.get(token) : null; return session && session.expiresAt > Date.now() && session.origin === (req.headers.origin || '') ? session : null }
 function publicResult(result) { const { internal, ...safe } = result; return safe }

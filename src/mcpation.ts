@@ -6,8 +6,9 @@ export interface MCPServer { id: string; name: string; source: string; transport
 export interface Finding { severity: FindingSeverity; title: string; detail: string }
 export interface FixProposal { id: string; title: string; detail: string; kind: 'remove-json-entry' | 'manual-review'; canApply: boolean }
 export interface EnvironmentProfile { name: string; configuredServers: string[]; mcpAccess: string; discovery: 'on' | 'off' | 'unknown' }
-export interface HostProfile { operatingSystem: string; gitBashInstalled: boolean; codexShell: string; recommendedShell: string }
-export interface ScanResult { schemaVersion: number; scannedAt: string; platform: string; host: HostProfile; sources: string[]; supportedSources: string[]; profiles: EnvironmentProfile[]; servers: MCPServer[]; findings: Finding[]; proposals: FixProposal[]; privacy: string }
+export interface HostProfile { operatingSystem: string; gitBashInstalled: boolean; wslReady: boolean; codexShell: string; recommendedShell: string }
+export interface Recommendation { id: string; priority: 'high' | 'review' | 'optional'; category: 'cleanup' | 'compatibility' | 'coverage' | 'performance'; title: string; reason: string; action: string }
+export interface ScanResult { schemaVersion: number; scannedAt: string; platform: string; host: HostProfile; sources: string[]; supportedSources: string[]; profiles: EnvironmentProfile[]; servers: MCPServer[]; findings: Finding[]; proposals: FixProposal[]; recommendations: Recommendation[]; privacy: string }
 
 const baseUrl = 'http://127.0.0.1:4318'
 let sessionToken = ''
@@ -22,13 +23,14 @@ function normalizeScan(raw: Partial<ScanResult>): ScanResult {
     schemaVersion: raw.schemaVersion || 1,
     scannedAt: raw.scannedAt || new Date().toISOString(),
     platform,
-    host: raw.host || { operatingSystem: platform === 'win32' ? 'Windows' : platform === 'darwin' ? 'macOS' : platform === 'linux' ? 'Linux' : 'Unknown', gitBashInstalled: false, codexShell: 'not checked', recommendedShell: 'restart the local companion to check shell compatibility' },
+    host: raw.host || { operatingSystem: platform === 'win32' ? 'Windows' : platform === 'darwin' ? 'macOS' : platform === 'linux' ? 'Linux' : 'Unknown', gitBashInstalled: false, wslReady: false, codexShell: 'not checked', recommendedShell: 'restart the local companion to check shell compatibility' },
     sources: Array.isArray(raw.sources) ? raw.sources : [],
     supportedSources: Array.isArray(raw.supportedSources) ? raw.supportedSources : [],
     profiles: Array.isArray(raw.profiles) ? raw.profiles : legacyProfiles,
     servers,
     findings: Array.isArray(raw.findings) ? raw.findings : [],
     proposals: Array.isArray(raw.proposals) ? raw.proposals : [],
+    recommendations: Array.isArray(raw.recommendations) ? raw.recommendations : (Array.isArray(raw.findings) ? raw.findings.filter((finding) => finding.severity !== 'healthy').map((finding, index) => ({ id: `legacy-${index}`, priority: finding.severity === 'attention' ? 'high' : 'review', category: 'cleanup', title: finding.title, reason: finding.detail, action: 'Review with Codex' })) : []),
     privacy: raw.privacy || 'Only redacted MCP metadata is shown.',
   }
 }
@@ -44,6 +46,7 @@ const tools: WebMCPTool[] = [
   { name: 'mcpation_get_findings', title: 'Read MCP Doctor findings', description: 'Returns duplicate, invalid transport, disabled, unavailable, and review findings calculated from the consented local inventory.', inputSchema: { type: 'object', properties: {} }, execute: () => requireScan().findings },
   { name: 'mcpation_get_environment_matrix', title: 'Compare configured MCP access by environment', description: 'Returns a redacted matrix of which discovered IDE environment configures each MCP server and whether its MCP access policy is restricted. It reports configuration intent, not runtime tool execution.', inputSchema: { type: 'object', properties: {} }, execute: () => requireScan().profiles },
   { name: 'mcpation_get_host_profile', title: 'Read host shell compatibility', description: 'Returns the operating system, whether Git Bash is detected on Windows, the configured Codex shell name when explicitly set, and a quoting-safe recommendation. It never returns paths or configuration contents.', inputSchema: { type: 'object', properties: {} }, execute: () => requireScan().host },
+  { name: 'mcpation_get_recommendations', title: 'Get the environment glow-up plan', description: 'Returns prioritized cleanup, compatibility, coverage, and performance recommendations for the consented environment. Recommendations never install software or change configuration.', inputSchema: { type: 'object', properties: {} }, execute: () => requireScan().recommendations },
   { name: 'mcpation_plan_cleanup', title: 'Generate a safe cleanup plan', description: 'Creates a review-only cleanup plan. It never changes a configuration or disables a server.', inputSchema: { type: 'object', properties: {} }, execute: () => buildFixPlan(requireScan()) },
 ]
 export const toolNames = tools.map((tool) => tool.name)

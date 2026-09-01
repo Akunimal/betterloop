@@ -1,0 +1,87 @@
+{
+  "version": "1.0",
+  "timestamp": "2026-09-01T20:37:45.223Z",
+  "phase": "delivery-glowup",
+  "phase_name": "Codex-first MCP cleanup and environment glow-up",
+  "phase_dir": ".planning",
+  "plan": 1,
+  "task": 2,
+  "total_tasks": 7,
+  "status": "paused",
+  "completed_tasks": [
+    {
+      "id": 1,
+      "name": "Stabilize production scan against older companions",
+      "status": "done",
+      "commit": "5551edc"
+    },
+    {
+      "id": 2,
+      "name": "Implement Codex-first glow-up data contract and dashboard markup",
+      "status": "in_progress",
+      "progress": "Build passes. Schema v3, WSL recommendations, seventh WebMCP tool, and new App markup exist locally. CSS, documentation, full verification, browser QA, and deployment remain."
+    }
+  ],
+  "remaining_tasks": [
+    {
+      "id": 3,
+      "name": "Replace legacy CSS with compact action-first dashboard styling",
+      "status": "not_started"
+    },
+    {
+      "id": 4,
+      "name": "Align README, submission, judge guide, demo runbook, and video script",
+      "status": "not_started"
+    },
+    {
+      "id": 5,
+      "name": "Run full verification and test both legacy and schema-v3 companions",
+      "status": "not_started"
+    },
+    {
+      "id": 6,
+      "name": "Commit final implementation, push main, and deploy Vercel",
+      "status": "not_started"
+    },
+    {
+      "id": 7,
+      "name": "Record under-three-minute Codex-first WebMCP demo",
+      "status": "not_started"
+    }
+  ],
+  "blockers": [
+    {
+      "description": "The running local companion is the older schema and must be restarted manually before schema-v3 QA.",
+      "type": "human_action",
+      "workaround": "The frontend normalizes legacy results and remains usable; restart with Ctrl+C then npm run companion when ready."
+    }
+  ],
+  "async_jobs": [],
+  "human_actions_pending": [
+    {
+      "action": "Restart the local companion once final code is ready",
+      "context": "The current listener on 127.0.0.1:4318 is the pre-schema-v3 process.",
+      "blocking": false
+    }
+  ],
+  "decisions": [
+    {
+      "decision": "Position MCPation as a Codex-first MCP cleanup and environment glow-up tool.",
+      "rationale": "The strongest demo is immediate practical value: inventory, cleanup, compatibility, and next actions. Other IDEs remain secondary coverage.",
+      "phase": "delivery-glowup"
+    },
+    {
+      "decision": "Keep every remediation supervised and stop the demo before applying changes.",
+      "rationale": "The user explicitly requested no fixes during preparation or recording; configuration writes are outside the demo proof.",
+      "phase": "delivery-glowup"
+    },
+    {
+      "decision": "Report configured access rather than claiming live runtime tool availability.",
+      "rationale": "Static IDE configuration does not prove that an MCP is trusted, started, or currently usable.",
+      "phase": "delivery-glowup"
+    }
+  ],
+  "uncommitted_files": [],
+  "next_action": "Read .planning/.continue-here.md, then replace src/mcpation.css so the new dashboard markup is compact and usable before touching copy or deployment.",
+  "context_notes": "Deadline is in two days. The public Vercel deployment is stable at commit 5551edc. The local WIP is preserved in a local-only WIP commit and intentionally has not been pushed or deployed. Prioritize a working visual demo over expanding detection breadth."
+}
