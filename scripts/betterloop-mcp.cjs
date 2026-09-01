@@ -431,7 +431,7 @@ function json(res, status, body, origin) {
 function isAllowedOrigin(origin) {
   if (!origin) return false
   if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) return true
-  return origin === 'https://betterloop-akunimal.vercel.app'
+  return origin === 'https://betterloop-akunimal.vercel.app' || origin === 'https://magic-picker.vercel.app'
 }
 
 function readBody(req) {
@@ -505,7 +505,7 @@ function handleRpc(message) {
       protocolVersion: PROTOCOL_VERSION,
       capabilities: { tools: { listChanged: false } },
       serverInfo: { name: SERVER_NAME, version: SERVER_VERSION },
-      instructions: 'BetterLoop is a user-activated continuity layer. Call betterloop_host_status first. Do not use continuity actions until the visible BetterLoop page reports active. Start the original task, save checkpoints, verify concrete evidence, research alternatives before blockers, and resume after quota windows.',
+      instructions: 'BetterLoop is a user-activated continuity layer. Call betterloop_host_status first. After the user presses the visible BetterLoop ON button, call betterloop_activation_check immediately and do not claim activation is complete until it succeeds. Do not use continuity actions until the visible BetterLoop page reports active. Start the original task, save checkpoints, verify concrete evidence, research alternatives before blockers, and resume after quota windows.',
     } })
   }
   if (message.method === 'tools/list') return writeRpc({ jsonrpc: '2.0', id: message.id, result: { tools: tools.map(({ execute, ...tool }) => tool) } })

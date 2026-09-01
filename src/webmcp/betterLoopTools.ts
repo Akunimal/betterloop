@@ -328,7 +328,13 @@ export async function registerBetterLoopTools(): Promise<{ mode: string; count: 
   const modelContext = getModelContext()
   if (!modelContext) return { mode: getWebMCPMode(), count: 0, verified: false, missingTools: tools.map((tool) => tool.name) }
   controllers = tools.map(() => new AbortController())
-  await Promise.all(tools.map((tool, index) => Promise.resolve(modelContext.registerTool(tool, { signal: controllers[index].signal }))))
+  try {
+    await Promise.all(tools.map((tool, index) => Promise.resolve(modelContext.registerTool(tool, { signal: controllers[index].signal }))))
+  } catch {
+    controllers.forEach((controller) => controller.abort())
+    controllers = []
+    return { mode: getWebMCPMode(), count: 0, verified: false, missingTools: tools.map((tool) => tool.name) }
+  }
   registered = true
   const verification = await verifyBetterLoopToolRegistration()
   window.dispatchEvent(new CustomEvent('betterloop:registered'))

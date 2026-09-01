@@ -336,7 +336,7 @@ export function LoopDashboard() {
         </section>
 
         <section className="log-section">
-          <div className="section-heading"><div><span className="eyebrow">OBSERVABILITY</span><h2>What BetterLoop sees</h2></div><span className="tool-count">{toolNames.length} page tools · 10 host tools</span></div>
+          <div className="section-heading"><div><span className="eyebrow">OBSERVABILITY</span><h2>What BetterLoop sees</h2></div><span className="tool-count">{toolNames.length} page tools · 11 host tools</span></div>
           <div className="log-card">{features.activityLog && viewRun ? <ActivityTimeline events={viewRun.events} /> : <p className="muted-copy">{features.activityLog ? 'Start a run to populate the visual log.' : 'Activity log is off.'}</p>}</div>
         </section>
         </div>
