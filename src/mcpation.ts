@@ -2,7 +2,7 @@ import { getModelContext, getWebMCPMode } from './webmcp/polyfill'
 import type { WebMCPTool } from './webmcp-types'
 
 export type FindingSeverity = 'healthy' | 'attention' | 'review'
-export interface MCPServer { id: string; name: string; source: string; configPath: string; transport: 'stdio' | 'http'; target: string; disabled: boolean; available?: boolean }
+export interface MCPServer { id: string; name: string; source: string; transport: 'stdio' | 'http'; target: string; disabled: boolean; available?: boolean }
 export interface Finding { severity: FindingSeverity; title: string; detail: string }
 export interface ScanResult { scannedAt: string; sources: string[]; servers: MCPServer[]; findings: Finding[]; privacy: string }
 
