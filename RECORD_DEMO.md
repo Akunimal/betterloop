@@ -2,11 +2,11 @@
 
 ## Execution contract
 
-Execute this file as a recording task. Do not research, browse the web, search for recording tools, inspect whether Codex has a video API, change OBS settings, open a terminal, or ask the user for a new plan. OBS is already configured and the red capture rectangle is the only recorded area.
+Execute this file as a recording task. Do not research, browse the web, search for recording tools, inspect whether Codex has a video API, invoke Graphify, change OBS settings, open a terminal, or ask the user for a new plan. OBS is already configured and the red capture rectangle is the only recorded area.
 
-Use Computer Use for the visible BetterLoop browser interactions only. Keep every visible message in this conversation concise, neutral English. Do not expose private chats, account information, unrelated tabs, settings, terminals, credentials, or local file paths.
+Do not use Computer Use. Do not list Windows apps, inspect desktop windows, activate windows, or automate the Codex desktop shell. Use only the already-open in-app browser tab through the browser control available to the agent. The only desktop shortcut in this runbook is `Shift+G` for the user-prepared OBS recording hotkey. Keep every visible message in this conversation concise, neutral English. Do not expose private chats, account information, unrelated tabs, settings, terminals, credentials, or local file paths.
 
-The user has prepared OBS. If recording is stopped, press `Shift+G` once to start it. Do not open OBS settings. Press `Shift+G` once at the end to stop recording.
+The user has prepared OBS. If recording is stopped, press `Shift+G` once to start it. Do not open OBS or its settings. Press `Shift+G` once at the end to stop recording.
 
 ## Starting state
 
