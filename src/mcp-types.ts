@@ -132,6 +132,7 @@ export interface BackupEntry {
   path: string
   actionId: string
   createdAt: string
+  restoredAt?: string
 }
 export interface RestoreResult {
   scan: ScanResult

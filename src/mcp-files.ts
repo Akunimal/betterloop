@@ -86,7 +86,8 @@ async function readBackupManifest(directory: FileSystemDirectoryHandle): Promise
     return parsed.filter((entry): entry is BackupEntry => Boolean(
       entry && typeof entry.id === 'string' && /^[^/\\.][^/\\]*$/.test(entry.id) && entry.id !== BACKUP_MANIFEST
       && typeof entry.path === 'string' && isSafeWorkspacePath(entry.path)
-      && typeof entry.actionId === 'string' && typeof entry.createdAt === 'string',
+      && typeof entry.actionId === 'string' && typeof entry.createdAt === 'string'
+      && (entry.restoredAt === undefined || typeof entry.restoredAt === 'string'),
     ))
   } catch { return [] }
 }
@@ -311,6 +312,7 @@ export async function restoreBrowserBackup(backupId: string): Promise<RestoreRes
   const entries = await listBrowserBackups()
   const entry = entries.find((item) => item.id === backupId)
   if (!entry || !isSafeWorkspacePath(entry.path)) throw new Error('That backup is no longer available in the selected workspace.')
+  if (entry.restoredAt) throw new Error('This backup was already restored. Choose another snapshot if you need to rewind again.')
   const directory = await rootHandle.getDirectoryHandle('.mcpation-backups')
   const backup = await directory.getFileHandle(entry.id)
   const backupFile = await backup.getFile()
@@ -327,6 +329,7 @@ export async function restoreBrowserBackup(backupId: string): Promise<RestoreRes
   await writer.write(restoredText)
   await writer.close()
   const scan = await scanRoot(rootHandle)
+  await writeBackupManifest(directory, entries.map((item) => item.id === entry.id ? { ...item, restoredAt: new Date().toISOString() } : item))
   return { scan: scan.scan, restoredPath: entry.path, source: `.mcpation-backups/${entry.id}`, safetyBackup }
 }
 

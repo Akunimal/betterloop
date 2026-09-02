@@ -36,6 +36,8 @@ The user selects a workspace folder; MCPation never claims whole-system access. 
 
 ## Demo story
 
+Chrome's restore history marks a used snapshot as restored and locks it after the safety copy and verification complete.
+
 The repository contains `demo-workspace`, a safe fixture with:
 
 - the same filesystem MCP declared in Codex TOML and a project `.mcp.json`;

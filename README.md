@@ -47,6 +47,8 @@ A normal web page starts with no filesystem access. In Chrome, open the app with
 
 MCPation registers native `document.modelContext` tools in supported WebMCP browser contexts, including ChatGPT's in-app browser and Chrome 149+ with WebMCP enabled. When that API is unavailable, it shows a local preview; the preview does not advertise native tools.
 
+After a restore, the selected snapshot is marked **Restored** and locked so the same rollback cannot be repeated accidentally.
+
 For Chrome, open `chrome://flags/#enable-webmcp-testing`, enable it, and relaunch. The deployed app sends `Origin-Agent-Cluster: ?1` and `Permissions-Policy: tools=(self)`, which satisfy the WebMCP page requirements for this top-level, same-origin app. Chrome's Model Context Tool Inspector can list and manually invoke the registered tools.
 
 This is the honest WebMCP boundary: WebMCP exposes the page's scoped, visible actions to Codex. Browser File System Access handles the optional, human-initiated write grant; Codex can independently scan and verify the shared result. The page never claims arbitrary operating-system access.

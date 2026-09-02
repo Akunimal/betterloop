@@ -41,6 +41,8 @@ After the plan returns an exact deterministic action id, the person selects it i
 
 ## Browser preview and write path
 
+After a restore, the selected snapshot remains visible as **Restored** and disabled, making the one-time rollback state explicit.
+
 Selecting a folder starts read-only by design. The browser analyzes only allowlisted files. In the embed, **Request Codex approval** emits a bounded handoff for the current Codex workspace; Codex performs the approved cleanup and returns a sanitized snapshot. Chrome's `?browser=chrome` apply control is the direct browser-handle variant. Discovery, explanation, planning, native approval, cleanup, rescan, and Codex verification complete in the shared page state.
 
 ## What to verify
