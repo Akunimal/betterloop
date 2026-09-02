@@ -3,9 +3,9 @@
 ## Before recording
 
 1. Run `npm run verify` and confirm the deployed URL is <https://mcpation.vercel.app/>.
-2. Open the deployed page in Codex's in-app browser with a WebMCP-capable model.
+2. Open the deployed page in Codex's in-app browser with a WebMCP-capable model. This is the browser used for the recorded end-to-end demo; Chrome 149+ with `chrome://flags/#enable-webmcp-testing` is also supported for native tool discovery.
 3. Keep the repository's `demo-workspace` folder ready to select. It contains no secrets and is intentionally small.
-4. If recording the apply step, let Codex use the host handoff: it requests native filesystem approval, applies only the reviewed JSON action, then submits a sanitized snapshot. A direct-access browser can also demonstrate the page-side backup/apply path.
+4. If recording the apply step, let Codex use the host handoff: it requests native filesystem approval, applies only the reviewed JSON action, then submits a sanitized snapshot. Folder selection in the browser is read-only by design.
 
 ## Prompt to paste into Codex
 
@@ -28,7 +28,7 @@ If the page is an import preview, call codex_request_host_handoff with operation
 | 0:47–1:05 | Show declared surface and findings. | “The same filesystem server appears twice, one server is disabled, one endpoint is invalid, and the package manifest declares MCP dependencies.” |
 | 1:05–1:20 | Call `codex_explain_finding`, then open the hardening plan. | “The agent can ask for the evidence behind a finding, while I can see exactly what it proposes.” |
 | 1:20–1:42 | Select only the deterministic duplicate action. | “Ambiguous commands, TOML, policies, and instruction changes stay manual. I choose the single safe action.” |
-| 1:42–2:00 | Call the host handoff for the chosen action; show Codex's approval and the returned verification, or use direct mode for the visible backup. | “When the page cannot write, Codex asks the host for the exact write capability, backs up the JSON, applies only that id, and sends a sanitized snapshot back to the same page.” |
+| 1:42–2:00 | Call the host handoff for the chosen action; show Codex's approval and the returned verification. | “Codex asks the host for the exact write capability, backs up the JSON, applies only that id, and sends a sanitized snapshot back to the same page.” |
 | 2:00–2:15 | Call `codex_verify_workspace` and return to score. | “The agent and I finish on the same verified state. That is the point of WebMCP: shared, structured action—not guessing at the UI.” |
 
 ## Recording rules

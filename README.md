@@ -42,7 +42,11 @@ Downloaded MCP code is never executed. Package entries are static evidence; they
 
 ## Permission model
 
-A normal web page starts with no filesystem access. The visible **Connect workspace folder** action requests the browser's native directory permission. If the browser only offers an import preview, Codex can call `codex_request_host_handoff`, ask its own host for read/write approval, use native `fs/*` tools, and submit an allowlisted snapshot back to this page. Direct browser access remains a convenient UI path, but it is not required for the Codex flow.
+A normal web page starts with no filesystem access. The visible **Select workspace folder** action uses a browser read-only folder import and analyzes only the allowlisted files. It never requests browser write access. Codex can scan its current workspace through `codex_request_host_handoff`, ask its own host for bounded read approval, and submit an allowlisted snapshot back to this page. Any approved write follows the same host handoff and requires a sibling backup plus a fresh snapshot.
+
+MCPation registers native `document.modelContext` tools in supported WebMCP browser contexts, including ChatGPT's in-app browser and Chrome 149+ with WebMCP enabled. When that API is unavailable, it shows a local preview; the preview does not advertise native tools.
+
+For Chrome, open `chrome://flags/#enable-webmcp-testing`, enable it, and relaunch. The deployed app sends `Origin-Agent-Cluster: ?1` and `Permissions-Policy: tools=(self)`, which satisfy the WebMCP page requirements for this top-level, same-origin app. Chrome's Model Context Tool Inspector can list and manually invoke the registered tools.
 
 This is the honest WebMCP boundary: WebMCP exposes page actions to Codex, while Codex's host permission flow handles operations the page cannot perform. The page never invokes host permissions or claims arbitrary operating-system access.
 
@@ -50,10 +54,10 @@ This is the honest WebMCP boundary: WebMCP exposes page actions to Codex, while 
 
 The repository includes [`demo-workspace`](demo-workspace) with safe, intentionally imperfect evidence: a duplicate filesystem MCP declaration, one disabled server, an invalid URL, MCP package dependencies, and Codex guidance files.
 
-1. Open the deployed app: <https://mcpation.vercel.app/>.
+1. Open the deployed app: <https://mcpation.vercel.app/> in Codex/ChatGPT's in-app browser, or in Chrome 149+ with the WebMCP testing flag enabled.
 2. Choose `demo-workspace` in the folder picker/import flow.
 3. Let Codex call `codex_scan_workspace`, `codex_get_tool_inventory`, `codex_get_findings`, and `codex_plan_hardening`.
-4. Review the duplicate proposal. If the page is only a preview, call `codex_request_host_handoff` with `operation: "apply"`; after native approval, submit the refreshed files with `codex_submit_host_snapshot` and call `codex_verify_workspace`. Direct browsers may use `codex_apply_hardening` instead.
+4. Review the duplicate proposal. Call `codex_request_host_handoff` with `operation: "apply"`; after native approval, submit the refreshed files with `codex_submit_host_snapshot` and call `codex_verify_workspace`.
 
 ## Local development
 

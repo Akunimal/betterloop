@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { applySupervisedFixes, buildFixPlan, getEnvironmentAccessMode, getLatestScan, getMCPationMode, registerMCPationTools, rescanConnectedEnvironment, restoreConnectedEnvironment, startConsentSession, startDemoSession, startImportedSession, supportsDirectDiskAccess, toolNames, type ScanResult } from './mcpation'
+import { applySupervisedFixes, buildFixPlan, getEnvironmentAccessMode, getLatestScan, getMCPationMode, registerMCPationTools, rescanConnectedEnvironment, restoreConnectedEnvironment, startImportedSession, toolNames, type ScanResult } from './mcpation'
 import './mcpation.css'
 
 function readinessClass(scan: ScanResult | null): string {
@@ -11,12 +11,10 @@ export default function App() {
   const [scan, setScan] = useState<ScanResult | null>(getLatestScan())
   const [registered, setRegistered] = useState(false)
   const [busy, setBusy] = useState(false)
-  const [auditLive, setAuditLive] = useState(false)
   const [message, setMessage] = useState('Ready to audit a Codex workspace.')
   const [showPlan, setShowPlan] = useState(false)
   const [selectedFixes, setSelectedFixes] = useState<string[]>([])
   const folderInput = useRef<HTMLInputElement>(null)
-  const directAccess = supportsDirectDiskAccess()
   const webmcpMode = getMCPationMode()
   const environmentMode = getEnvironmentAccessMode()
   const issues = useMemo(() => scan?.findings.filter((finding) => finding.severity !== 'healthy').length || 0, [scan])
@@ -27,28 +25,22 @@ export default function App() {
     const handoff = () => setMessage('Codex host handoff requested. Review and approve the native filesystem capability, then return the sanitized snapshot.')
     window.addEventListener('mcpation:scan', refresh)
     window.addEventListener('mcpation:handoff', handoff)
-    void registerMCPationTools().then(() => setRegistered(true)).catch(() => setMessage('Open MCPation in a WebMCP-capable browser.'))
+    void registerMCPationTools().then(() => {
+      setRegistered(true)
+      if (getMCPationMode() !== 'native') setMessage('Native WebMCP is unavailable in this browser. Open MCPation in ChatGPT’s in-app browser or Chrome 149+ with WebMCP enabled.')
+    }).catch(() => setMessage('Open MCPation in a supported WebMCP browser.'))
     void restoreConnectedEnvironment().catch(() => undefined)
     return () => { window.removeEventListener('mcpation:scan', refresh); window.removeEventListener('mcpation:handoff', handoff) }
   }, [])
 
-  useEffect(() => {
-    if (!auditLive || !scan) return
-    const timer = window.setInterval(() => {
-      if (busy) return
-      void rescanConnectedEnvironment().then((result) => setScan(result)).catch(() => setAuditLive(false))
-    }, 15000)
-    return () => window.clearInterval(timer)
-  }, [auditLive, busy, scan])
-
   const scanNow = async () => {
-    if (!scan && !directAccess) {
+    if (!scan) {
       folderInput.current?.click()
       return
     }
     setBusy(true)
     try {
-      const result = scan ? await rescanConnectedEnvironment() : await startConsentSession()
+      const result = await rescanConnectedEnvironment()
       setScan(result)
       setShowPlan(false)
       setMessage(`Audit complete. Codex readiness: ${result.readiness.value}/100.`)
@@ -73,20 +65,6 @@ export default function App() {
     }
   }
 
-  const loadDemo = () => {
-    const result = startDemoSession()
-    setScan(result)
-    setShowPlan(false)
-    setSelectedFixes([])
-    setMessage(`Deterministic demo loaded. Codex readiness: ${result.readiness.value}/100.`)
-  }
-
-  const toggleAudit = () => {
-    if (!scan) { void scanNow(); return }
-    setAuditLive((current) => !current)
-    setMessage(auditLive ? 'Audit paused. The last result remains available to Codex.' : 'Audit live. MCPation will recheck the granted workspace periodically.')
-  }
-
   const toggleFix = (id: string) => setSelectedFixes((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id])
 
   const applyFixes = async () => {
@@ -107,25 +85,21 @@ export default function App() {
   return <main className="shell">
     <header className="topline">
       <div className="wordmark"><span className="mark">M</span><div><strong>MCPation</strong><small>CODEX ENVIRONMENT DOCTOR</small></div></div>
-      <div className="top-actions">
-        <div className={'webmcp-state ' + (registered ? 'ready' : '')}><i />{registered ? webmcpMode === 'native' ? `${toolNames.length} Codex tools ready` : webmcpMode === 'polyfill' ? `${toolNames.length} local preview tools` : 'WebMCP unavailable' : 'Loading WebMCP'}</div>
-        <button className={'live-button ' + (auditLive ? 'active' : '')} onClick={() => void toggleAudit()} disabled={busy}><span>{auditLive ? 'Ⅱ' : '▶'}</span>{auditLive ? 'Pause audit' : 'Start audit'}</button>
-      </div>
+      <div className="top-actions"><div className={'webmcp-state ' + (registered ? 'ready' : '')}><i />{registered ? webmcpMode === 'native' ? `${toolNames.length} Codex tools ready` : 'Open in a WebMCP browser' : 'Loading WebMCP'}</div></div>
     </header>
 
     <section className="hero">
       <div>
-        <p className="kicker">DISCOVER · HARDEN · VERIFY</p>
-        <h1>Make Codex<br /><em>ready before it runs.</em></h1>
-        <p className="lede">MCPation turns a granted workspace into a safe, explainable readiness check: configured MCPs, downloaded package signals, AGENTS, skills, and the fixes worth reviewing. If the page needs host access, Codex asks for it explicitly and brings back a sanitized snapshot.</p>
+        <p className="kicker">CODEX WORKSPACE PRE-FLIGHT</p>
+        <h1>Know what Codex<br /><em>will inherit.</em></h1>
+        <p className="lede">Choose one workspace. MCPation reads its MCP configuration, package signals, AGENTS, and skills, then turns configuration drift into a clear readiness decision.</p>
       </div>
       <aside className="connect-card">
         <div className="card-eyebrow"><span className="status-dot" /> WORKSPACE SCOPE</div>
-        <h2>{scan ? scan.scope.root : 'Connect one workspace'}</h2>
+        <h2>{scan ? scan.scope.root : 'Choose a workspace'}</h2>
         <input ref={folderInput} type="file" multiple hidden onChange={(event) => void importFolder(event.currentTarget.files)} {...({ webkitdirectory: '' } as { webkitdirectory: string })} />
-        <button className="primary-button" onClick={() => void scanNow()} disabled={busy}>{busy ? 'Auditing…' : scan ? 'Rescan workspace' : directAccess ? 'Connect workspace folder' : 'Select workspace folder'} <b>→</b></button>
-        {!scan && <button className="demo-button" onClick={loadDemo} disabled={busy}>Try deterministic demo <span>↗</span></button>}
-        <small>{scan?.scope.mode === 'demo' ? 'Deterministic demo only; no disk access.' : scan?.scope.mode === 'import' ? 'Browser preview only; ask Codex for native host approval.' : scan?.scope.mode === 'codex-host' ? 'Codex host scope; only allowlisted snapshots return here.' : directAccess ? 'Direct browser read/write after explicit folder grant.' : 'Browser preview; ask Codex for native host approval.'} Never scans outside the selected scope.</small>
+        <button className="primary-button" onClick={() => void scanNow()} disabled={busy}>{busy ? 'Analyzing workspace…' : scan ? 'Rescan workspace' : 'Choose workspace folder'} <b>→</b></button>
+        <small>{scan?.scope.mode === 'codex-host' ? 'Codex host scope; only allowlisted snapshots return here.' : 'Read-only analysis. No code runs and nothing is changed.'} Never scans outside the selected scope.</small>
       </aside>
     </section>
 
@@ -136,16 +110,16 @@ export default function App() {
       <div><small>INSTRUCTIONS</small><strong>{scan ? scan.instructionChain.length : '—'}</strong></div>
     </section>
 
-    <section className="run-state"><span className={'pulse ' + (auditLive ? 'live' : '')} /><strong>{message}</strong><small>{scan ? `${scan.scope.mode} · ${getMCPationMode()} WebMCP · ${scan.scope.filesConsidered} files considered` : 'No folder access has been granted'}</small></section>
+    <section className="run-state"><span className="pulse" /><strong>{message}</strong><small>{scan ? `${scan.scope.mode} · ${getMCPationMode()} WebMCP · ${scan.scope.filesConsidered} files considered` : 'No workspace has been selected'}</small></section>
 
     {!scan ? <section className="empty-state">
       <div className="empty-icon">◎</div>
-      <div><p className="kicker">ONE EXPLICIT PERMISSION</p><h2>Give Codex a bounded workspace view.</h2><p>We read only allowlisted config, package, instruction, and skill files. If the page cannot access the host, Codex requests that native permission and sends back a sanitized snapshot.</p></div>
-      <div className="empty-steps"><span><b>01</b> Connect or hand off</span><span><b>02</b> Let Codex inspect</span><span><b>03</b> Approve exact fixes</span></div>
+      <div><p className="kicker">ONE WORKSPACE · READ ONLY</p><h2>Start with the workspace Codex will use.</h2><p>MCPation reads only allowlisted config, package, instruction, and skill files. Codex can inspect the same findings; any write remains a separate, explicit host approval.</p></div>
+      <div className="empty-steps"><span><b>01</b> Select workspace</span><span><b>02</b> Inspect findings</span><span><b>03</b> Review next step</span></div>
     </section> : <>
       <section className="readiness-row">
         <div className={'score-card ' + readinessClass(scan)}><div className="score-ring"><strong>{scan.readiness.value}</strong><small>/100</small></div><div><p className="kicker">READINESS GATE</p><h2>{scan.readiness.label === 'ready' ? 'Ready for the next run' : scan.readiness.label === 'needs-attention' ? 'Review before the next run' : 'Pause and harden first'}</h2><p>{scan.readiness.signals.join(' · ')}</p></div></div>
-        <div className="scope-card"><p className="kicker">WHAT IS IN SCOPE</p><strong>{scan.scope.root}</strong><span>{scan.scope.mode === 'direct' ? 'Browser read/write' : scan.scope.mode === 'demo' ? 'Deterministic demo · in memory' : scan.scope.mode === 'codex-host' ? 'Codex host approval · snapshot bridge' : 'Browser preview · host handoff available'} · {scan.sources.length} config source{scan.sources.length === 1 ? '' : 's'}</span><small>Codex sees sanitized metadata only.</small></div>
+        <div className="scope-card"><p className="kicker">WHAT IS IN SCOPE</p><strong>{scan.scope.root}</strong><span>{scan.scope.mode === 'demo' ? 'Deterministic demo · in memory' : scan.scope.mode === 'codex-host' ? 'Codex host approval · snapshot bridge' : 'Browser read-only preview · host handoff available'} · {scan.sources.length} config source{scan.sources.length === 1 ? '' : 's'}</span><small>Codex sees sanitized metadata only.</small></div>
       </section>
 
       <section className="dashboard-heading"><div><p className="kicker">AGENT-READY INVENTORY</p><h2>{showPlan ? 'Supervised hardening' : 'What Codex can act on'}</h2></div><button className="plan-button" onClick={() => setShowPlan(!showPlan)}>{showPlan ? 'Back to inventory' : `Review hardening · ${plan?.items.length || 0}`}</button></section>
@@ -153,7 +127,7 @@ export default function App() {
       {showPlan ? <section className="fix-plan">
         <div className="plan-intro"><strong>Every write is explicit.</strong><span>Only deterministic JSON duplicate cleanup can be applied. Commands, TOML, policy, and instruction changes remain manual. If the page is read-only, Codex can request the host handoff for this exact plan.</span></div>
         {plan?.items.length ? plan.items.map((item) => <article key={item.id}><span className={item.canApply ? 'apply-label' : 'manual-label'}>{item.canApply ? 'BACKUP + REVIEW' : 'MANUAL REVIEW'}</span><b>{item.title}</b><p>{item.detail}</p>{item.canApply && <label className="fix-choice"><input type="checkbox" checked={selectedFixes.includes(item.id)} onChange={() => toggleFix(item.id)} /> Include this exact change</label>}</article>) : <div className="plan-empty">No hardening action proposed for this workspace.</div>}
-        <div className="fix-plan-actions"><small>{environmentMode === 'direct' ? 'A sibling backup is written before each selected change.' : environmentMode === 'demo' ? 'Demo mode changes memory only; no disk file is touched.' : environmentMode === 'codex-host' ? 'Codex must request native write approval, then use the host handoff and submit a fresh snapshot.' : 'Ask Codex to call codex_request_host_handoff with operation apply; the page cannot invoke host permissions.'}</small><button disabled={!selectedFixes.length || busy || !['direct', 'demo'].includes(environmentMode || '')} onClick={() => void applyFixes()}>{environmentMode === 'demo' ? 'Apply demo change' : environmentMode === 'direct' ? 'Back up & apply' : 'Use Codex host handoff'} {selectedFixes.length || ''}</button></div>
+        <div className="fix-plan-actions"><small>{environmentMode === 'demo' ? 'Demo mode changes memory only; no disk file is touched.' : environmentMode === 'codex-host' ? 'Codex must request native write approval, then use the host handoff and submit a fresh snapshot.' : 'Ask Codex to call codex_request_host_handoff with operation apply; the page never writes selected workspace files.'}</small><button disabled={!selectedFixes.length || busy || environmentMode !== 'demo'} onClick={() => void applyFixes()}>{environmentMode === 'demo' ? 'Apply demo change' : 'Use Codex host handoff'} {selectedFixes.length || ''}</button></div>
       </section> : <section className="dashboard-grid">
         <div className="panel inventory-panel"><div className="panel-title"><strong>Declared MCP surface</strong><span>{scan.toolSurface.length}</span></div><p className="panel-note">Configured servers and package evidence. Static declarations are not live runtime proof.</p><div className="inventory">{scan.toolSurface.length ? scan.toolSurface.map((entry) => <article key={entry.id}><div><strong>{entry.name}</strong><small>{entry.kind.replace('-', ' ')} · {entry.confidence} confidence</small></div><div className="server-meta"><span>{entry.source}</span><small>{entry.target || entry.declaredIn}</small></div></article>) : <div className="all-clear"><b>No MCP signal found.</b><span>Connect a project with a Codex config or MCP package manifest.</span></div>}</div></div>
         <div className="panel findings-panel"><div className="panel-title"><strong>Readiness findings</strong><span>{issues}</span></div><div className="findings">{scan.findings.map((finding) => <article key={finding.id} className={finding.severity}><span>{finding.severity}</span><strong>{finding.title}</strong><p>{finding.detail}</p></article>)}</div></div>

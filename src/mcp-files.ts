@@ -110,8 +110,8 @@ async function readWorkspaceFiles(root: FileSystemDirectoryHandle): Promise<Work
   return files
 }
 
-async function permissionGranted(handle: FileSystemDirectoryHandle): Promise<boolean> {
-  try { return await handle.queryPermission({ mode: 'readwrite' }) === 'granted' } catch { return false }
+async function permissionGranted(handle: FileSystemDirectoryHandle, mode: 'read' | 'readwrite' = 'read'): Promise<boolean> {
+  try { return await handle.queryPermission({ mode }) === 'granted' } catch { return false }
 }
 
 async function scanRoot(root: FileSystemDirectoryHandle): Promise<AnalysisResult> {
@@ -194,7 +194,7 @@ export async function restoreEnvironmentAccess(): Promise<boolean> {
 
 export async function connectEnvironment(): Promise<AnalysisResult> {
   if (!fileSystemAccessSupported()) throw new Error('This browser does not expose the File System Access API.')
-  rootHandle = await window.showDirectoryPicker({ id: 'mcpation-environment', mode: 'readwrite' })
+  rootHandle = await window.showDirectoryPicker({ id: 'mcpation-environment', mode: 'read' })
   try { await storeRoot(rootHandle) } catch { /* Private browsing may not persist handles; the current session still works. */ }
   return scanRoot(rootHandle)
 }
@@ -249,7 +249,7 @@ export async function applyBrowserFixes(actionIds: string[]): Promise<ApplyResul
     return { ...result, appliedActionIds, skippedActionIds, backups }
   }
   rootHandle ||= await restoreRoot()
-  if (!rootHandle || !(await permissionGranted(rootHandle)) || !latestAnalysis) throw new Error('Reconnect the environment before applying a reviewed change.')
+  if (!rootHandle || !(await permissionGranted(rootHandle, 'readwrite')) || !latestAnalysis) throw new Error('This browser connection is read-only. Ask Codex for the approved host handoff before applying a reviewed change.')
   const requested = [...new Set(actionIds)]
   const known = new Set(latestAnalysis.removals.map((action) => action.actionId))
   const unknown = requested.filter((actionId) => !known.has(actionId))

@@ -21,7 +21,7 @@ The product is not a separate MCP server. Its value is the live shared surface b
 - The page exposes precise, structured tools through top-level `document.modelContext`.
 - Tool calls update the same visible readiness gate the user is reviewing.
 - Schemas distinguish read-only inspection, a host-capability handshake, snapshot submission, and a non-read-only apply action.
-- The apply action accepts only exact ids returned by the current plan. In page-direct mode it creates a backup; otherwise it returns a precise Codex host handoff that requires native approval, backup, and a fresh snapshot.
+- The apply action accepts only exact ids returned by the current plan and returns a precise Codex host handoff that requires native approval, backup, and a fresh snapshot.
 - No daemon, extension, companion, Gemini key, or second account is required.
 
 ## Safety and scope
@@ -38,7 +38,7 @@ The repository contains `demo-workspace`, a safe fixture with:
 - MCP package dependencies in `package.json`;
 - `AGENTS.md` and a Codex `SKILL.md`.
 
-The live app turns that fixture into a visible readiness score, a declared tool inventory, evidence cards, and a supervised duplicate-cleanup plan. In an embedded/import browser, Codex can request the host handoff, apply the exact JSON action with native filesystem approval, submit a sanitized snapshot, and verify the same page state. A direct-access browser can demonstrate the equivalent page-side backup/apply path.
+The live app turns that fixture into a visible readiness score, a declared tool inventory, evidence cards, and a supervised duplicate-cleanup plan. The browser's selected-folder view is read-only; Codex requests the host handoff, applies the exact JSON action with native filesystem approval, submits a sanitized snapshot, and verifies the same page state.
 
 ## Implementation notes
 
