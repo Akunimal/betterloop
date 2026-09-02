@@ -10,7 +10,7 @@ Use a public recording with audio. Keep the live app and Codex interaction visib
 | 0:47–1:05 | Show declared MCP surface and findings cards. | “The filesystem server is declared twice, the docs server is disabled, the legacy endpoint is invalid, and the package manifest contains MCP dependencies.” |
 | 1:05–1:20 | Codex calls `codex_explain_finding`; open **Review hardening**. | “The agent can explain the evidence behind one finding, then produce a plan that separates deterministic changes from manual review.” |
 | 1:20–1:42 | Select exactly one duplicate cleanup action. | “I choose the action. MCPation never invents a command, URL, policy, or instruction rewrite.” |
-| 1:42–2:00 | Click **Approve, grant write access & apply**, choose the same folder in the browser dialog, then show the backup and refreshed result. | “I explicitly grant write access only for this selected folder. MCPation backs up the JSON, applies only the checked action, and rescans immediately.” |
+| 1:42–2:00 | Click **Approve & apply**, approve the write escalation, then show `.mcpation-backups/` and the refreshed result. | “I explicitly grant write access only for the folder I already selected. MCPation backs up the JSON, applies only the checked action, and rescans immediately.” |
 | 2:00–2:15 | Ask Codex to call `codex_verify_workspace` and review the result; readiness card updates. | “Codex independently reviews what MCPation changed on the same visible state. That is WebMCP: structured collaboration on a real workflow, not a passive dashboard.” |
 
 ## Prompt shown in the video

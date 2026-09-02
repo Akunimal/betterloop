@@ -59,12 +59,6 @@ async function fileAt(root: FileSystemDirectoryHandle, parts: string[]): Promise
   } catch { return null }
 }
 
-async function directoryAt(root: FileSystemDirectoryHandle, parts: string[]): Promise<FileSystemDirectoryHandle> {
-  let directory = root
-  for (const part of parts) directory = await directory.getDirectoryHandle(part)
-  return directory
-}
-
 function configDocumentsForFiles(files: WorkspaceFile[], manualOnly: boolean): ConfigDocument[] {
   const documents: ConfigDocument[] = []
   const seen = new Set<string>()
@@ -197,13 +191,11 @@ export async function connectEnvironment(): Promise<AnalysisResult> {
   return scanRoot(rootHandle)
 }
 
-export async function connectWritableEnvironment(): Promise<AnalysisResult> {
-  if (!fileSystemAccessSupported()) throw new Error('This browser does not expose the folder permission needed to apply a change.')
-  const handle = await window.showDirectoryPicker({ id: 'mcpation-environment-write', mode: 'readwrite' })
-  const granted = await handle.requestPermission({ mode: 'readwrite' })
+export async function grantWriteAccessToConnectedEnvironment(): Promise<AnalysisResult> {
+  rootHandle ||= await restoreRoot()
+  if (!rootHandle) throw new Error('Select the workspace folder first. MCPation cannot request write access for a folder it has not been granted.')
+  const granted = await rootHandle.requestPermission({ mode: 'readwrite' })
   if (granted !== 'granted') throw new Error('Write permission was not granted. Nothing was changed.')
-  rootHandle = handle
-  try { await storeRoot(rootHandle) } catch { /* The current approved session still works if private browsing blocks storage. */ }
   return scanRoot(rootHandle)
 }
 
@@ -230,7 +222,7 @@ export async function rescanEnvironment(): Promise<AnalysisResult> {
 }
 
 export async function applyBrowserFixes(actionIds: string[]): Promise<ApplyResult> {
-  if (accessMode === 'import') throw new Error('This browser session is read-only. Use the visible approved-cleanup button to grant write access to the selected folder before writing.')
+  if (accessMode === 'import') throw new Error('This browser only imported files read-only. Reconnect the workspace with the browser folder picker before applying a change.')
   if (accessMode === 'codex-host') throw new Error('This scan belongs to the Codex host. Ask Codex to execute the reviewed host handoff with native filesystem approval.')
   if (accessMode === 'demo') {
     if (!latestAnalysis || !demoFiles) throw new Error('Start the deterministic demo before applying a demo action.')
@@ -275,24 +267,37 @@ export async function applyBrowserFixes(actionIds: string[]): Promise<ApplyResul
       const original = await file.text()
       const document = JSON.parse(original) as Record<string, Record<string, unknown>>
       if (!document[action.groupKey] || !(action.serverName in document[action.groupKey])) { skippedActionIds.push(action.actionId); continue }
-      const directory = await directoryAt(rootHandle, parts.slice(0, -1))
-      const backupName = `${parts[parts.length - 1]}.mcpation-${new Date().toISOString().replace(/[:.]/g, '-')}.bak`
-      const backup = await directory.getFileHandle(backupName, { create: true })
+      const backupDirectory = await rootHandle.getDirectoryHandle('.mcpation-backups', { create: true })
+      const backupName = `${new Date().toISOString().replace(/[:.]/g, '-')}-${parts.join('--')}.bak`
+      const backup = await backupDirectory.getFileHandle(backupName, { create: true })
       const backupWriter = await backup.createWritable()
       await backupWriter.write(original)
       await backupWriter.close()
+      await ignoreBackupDirectory(rootHandle)
       delete document[action.groupKey][action.serverName]
       const writer = await handle.createWritable()
       await writer.write(`${JSON.stringify(document, null, 2)}\n`)
       await writer.close()
       appliedActionIds.push(action.actionId)
-      backups.push(`${parts.slice(0, -1).concat(backupName).join('/')}`)
+      backups.push(`.mcpation-backups/${backupName}`)
     } catch {
       skippedActionIds.push(action.actionId)
     }
   }
   const result = await scanRoot(rootHandle)
   return { ...result, appliedActionIds, skippedActionIds, backups }
+}
+
+async function ignoreBackupDirectory(root: FileSystemDirectoryHandle): Promise<void> {
+  try {
+    const handle = await root.getFileHandle('.gitignore')
+    const file = await handle.getFile()
+    const current = await file.text()
+    if (current.split(/\r?\n/).some((line) => line.trim() === '.mcpation-backups/')) return
+    const writer = await handle.createWritable()
+    await writer.write(`${current.replace(/\s*$/, '')}\n.mcpation-backups/\n`)
+    await writer.close()
+  } catch { /* A missing or unreadable .gitignore never blocks the approved cleanup. */ }
 }
 
 export const getLatestAnalysis = () => latestAnalysis

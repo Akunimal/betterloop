@@ -43,7 +43,7 @@ Downloaded MCP code is never executed. Package entries are static evidence; they
 
 ## Permission model
 
-A normal web page starts with no filesystem access. The visible **Choose workspace folder** action uses a browser read-only folder import and analyzes only allowlisted files. When the person selects an exact supported cleanup, **Approve, grant write access & apply** opens a second native browser dialog. The person chooses the same folder and explicitly grants `readwrite`; MCPation creates a sibling backup, applies only the checked JSON cleanup, and rescans. The page cannot silently reuse the first read-only selection or access another folder.
+A normal web page starts with no filesystem access. Where File System Access is available, **Choose workspace folder** is the one native folder picker: it retains a read-scoped handle for that folder and analyzes only allowlisted files. When the person selects an exact supported cleanup, **Approve & apply** asks to elevate access for that same handle—without another folder picker. MCPation stores the original under `.mcpation-backups/`, adds that directory to an existing `.gitignore` when needed, applies only the checked JSON cleanup, and rescans.
 
 MCPation registers native `document.modelContext` tools in supported WebMCP browser contexts, including ChatGPT's in-app browser and Chrome 149+ with WebMCP enabled. When that API is unavailable, it shows a local preview; the preview does not advertise native tools.
 
@@ -58,7 +58,7 @@ The repository includes [`demo-workspace`](demo-workspace) with safe, intentiona
 1. Open the deployed app: <https://mcpation.vercel.app/> in Codex/ChatGPT's in-app browser, or in Chrome 149+ with the WebMCP testing flag enabled.
 2. Choose `demo-workspace` in the folder picker/import flow.
 3. Let Codex call `codex_scan_workspace`, `codex_get_tool_inventory`, `codex_get_findings`, and `codex_plan_hardening`.
-4. Review the duplicate proposal, select it, and click **Approve, grant write access & apply**. In the browser dialog select the same folder and approve the write grant. MCPation makes a sibling backup, applies the exact JSON cleanup, and rescans.
+4. Review the duplicate proposal, select it, and click **Approve & apply**. Approve the browser's write escalation for the already selected folder. MCPation saves the original in `.mcpation-backups/`, updates an existing `.gitignore` if needed, applies the exact JSON cleanup, and rescans.
 5. Ask Codex to call `codex_verify_workspace` and report the current readiness, remaining findings, and what MCPation changed.
 
 ## Local development
@@ -81,7 +81,7 @@ bounded browser file reader
 deterministic Codex readiness analyzer
         ↓
 document.modelContext WebMCP tools
-        ↘ explicit browser write grant → exact JSON cleanup + sibling backup
+        ↘ write escalation for the same folder → exact JSON cleanup + .mcpation-backups/
         ↓                         ↘
 human-reviewed hardening + backup ← Codex independently verifies current result
         ↓

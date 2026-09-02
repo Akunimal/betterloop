@@ -5,7 +5,7 @@
 1. Run `npm run verify` and confirm the deployed URL is <https://mcpation.vercel.app/>.
 2. Open the deployed page in Codex's in-app browser with a WebMCP-capable model. This is the browser used for the recorded end-to-end demo; Chrome 149+ with `chrome://flags/#enable-webmcp-testing` is also supported for native tool discovery.
 3. Keep the repository's `demo-workspace` folder ready to select. It contains no secrets and is intentionally small.
-4. If recording the apply step, select the reviewed JSON action and click **Approve, grant write access & apply**. In the browser's native dialog, choose the same folder again and grant write access. MCPation creates a sibling backup, applies only that exact action, and rescans.
+4. If recording the apply step, select the reviewed JSON action and click **Approve & apply**. Approve the browser's write escalation for the folder already selected. MCPation stores a backup in `.mcpation-backups/`, adds it to an existing `.gitignore` when needed, applies only that exact action, and rescans.
 
 ## Prompt to paste into Codex
 
@@ -28,7 +28,7 @@ I will approve supported cleanup in MCPation's browser folder-permission dialog.
 | 0:47–1:05 | Show declared surface and findings. | “The same filesystem server appears twice, one server is disabled, one endpoint is invalid, and the package manifest declares MCP dependencies.” |
 | 1:05–1:20 | Call `codex_explain_finding`, then open the hardening plan. | “The agent can ask for the evidence behind a finding, while I can see exactly what it proposes.” |
 | 1:20–1:42 | Select only the deterministic duplicate action. | “Ambiguous commands, TOML, policies, and instruction changes stay manual. I choose the single safe action.” |
-| 1:42–2:00 | Click **Approve, grant write access & apply**; choose the same folder in the native browser dialog and show the refreshed result. | “I grant write access only to this selected folder. MCPation makes a sibling backup, applies only that exact JSON cleanup, and rescans.” |
+| 1:42–2:00 | Click **Approve & apply**; approve the write escalation and show the backup plus refreshed result. | “I grant write access only to the folder I already selected. MCPation stores a backup, applies only that exact JSON cleanup, and rescans.” |
 | 2:00–2:15 | Ask Codex to call `codex_verify_workspace` and review the result. | “Codex independently reports what MCPation changed on the same verified state. That is the point of WebMCP: shared, structured action—not guessing at the UI.” |
 
 ## Recording rules
@@ -37,4 +37,4 @@ I will approve supported cleanup in MCPation's browser folder-permission dialog.
 - Do not show personal folders, tokens, environment values, raw instruction text, or terminal output.
 - Keep the visible scope card in frame when discussing permissions.
 - Do not claim that static package evidence is a live runtime tool list.
-- Select the same folder in both browser dialogs. The first import is read-only; the second is the explicit write grant after you select the exact action.
+- The folder is selected once. Keep the browser permission prompt and `.mcpation-backups/` result in frame.

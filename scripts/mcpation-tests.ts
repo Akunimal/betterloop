@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { analyzeCodexWorkspace } from '../src/codex-analysis.ts'
-import { applyBrowserFixes, connectWritableEnvironment, ingestHostSnapshot, startDemoEnvironment } from '../src/mcp-files.ts'
+import { applyBrowserFixes, connectEnvironment, grantWriteAccessToConnectedEnvironment, ingestHostSnapshot, startDemoEnvironment } from '../src/mcp-files.ts'
 import { analyzeDocuments } from '../src/mcp-analysis.ts'
 import { parseCleanupToolInput, parseHostHandoffInput, parseHostSnapshotInput } from '../src/mcp-tool-input.ts'
 import { matchSourceForPath } from '../src/mcp-paths.ts'
@@ -149,20 +149,26 @@ const browserMcp = new MemoryFile('.mcp.json', JSON.stringify({ mcpServers: {
   'filesystem-copy': { command: 'npx', args: ['-y', '@modelcontextprotocol/server-filesystem', './workspace'] },
 } }))
 browserRoot.entries.set('.mcp.json', browserMcp)
+const browserGitignore = new MemoryFile('.gitignore', 'node_modules/\n')
+browserRoot.entries.set('.gitignore', browserGitignore)
 ;(globalThis as any).window = {
   dispatchEvent: () => true,
   showDirectoryPicker: async () => browserRoot,
 }
-const direct = await connectWritableEnvironment()
+const direct = await connectEnvironment()
 const directAction = direct.removals.find((item) => item.path === '.mcp.json')
 assert.ok(directAction)
+await grantWriteAccessToConnectedEnvironment()
 const directApplied = await applyBrowserFixes([directAction.actionId])
 assert.deepEqual(directApplied.appliedActionIds, [directAction.actionId])
 assert.equal(directApplied.skippedActionIds.length, 0)
 assert.equal(browserRoot.requests, 1)
 assert.match(browserMcp.text(), /filesystem/)
 assert.equal(Object.keys(JSON.parse(browserMcp.text()).mcpServers).length, 1)
-assert.ok([...browserRoot.entries.keys()].some((name) => /^\.mcp\.json\.mcpation-.*\.bak$/.test(name)))
+const browserBackups = browserRoot.entries.get('.mcpation-backups') as MemoryDirectory
+assert.ok(browserBackups)
+assert.ok([...browserBackups.entries.keys()].some((name) => /^.*-\.mcp\.json\.bak$/.test(name)))
+assert.match(browserGitignore.text(), /\.mcpation-backups\//)
 delete (globalThis as any).window
 
 assert.deepEqual(parseCleanupToolInput({ actionIds: ['remove-one', 'remove-one'], confirm: true }), ['remove-one'])

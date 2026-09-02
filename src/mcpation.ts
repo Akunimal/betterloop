@@ -1,4 +1,4 @@
-import { applyBrowserFixes, connectEnvironment, connectWritableEnvironment, fileSystemAccessSupported, getAccessMode, getLatestAnalysis, importEnvironment, ingestHostSnapshot, rescanEnvironment, restoreEnvironmentAccess, startDemoEnvironment } from './mcp-files.ts'
+import { applyBrowserFixes, connectEnvironment, fileSystemAccessSupported, getAccessMode, getLatestAnalysis, grantWriteAccessToConnectedEnvironment, importEnvironment, ingestHostSnapshot, rescanEnvironment, restoreEnvironmentAccess, startDemoEnvironment } from './mcp-files.ts'
 import { buildHostApplyHandoff, buildHostScanHandoff } from './codex-handoff.ts'
 import { parseCleanupToolInput, parseHostHandoffInput, parseHostSnapshotInput, parseRequiredId } from './mcp-tool-input.ts'
 import type { ScanResult } from './mcp-types.ts'
@@ -36,7 +36,7 @@ export async function applySupervisedFixes(selectedActionIds: string[]): Promise
 }
 
 export async function approveAndApplyBrowserFixes(selectedActionIds: string[]): Promise<ScanResult> {
-  if (getAccessMode() !== 'demo' && getAccessMode() !== 'direct') await connectWritableEnvironment()
+  if (getAccessMode() !== 'demo') await grantWriteAccessToConnectedEnvironment()
   return (await applyBrowserFixes(selectedActionIds)).scan
 }
 

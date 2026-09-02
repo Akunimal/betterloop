@@ -10,7 +10,7 @@ Codex workspaces quietly accumulate MCP definitions, package dependencies, `AGEN
 
 ## What people and agents do together
 
-The person grants a bounded workspace and sees every scope and proposed change. Codex uses the same page's WebMCP tools to scan, inspect the declared tool surface, ask for the evidence behind a finding, propose hardening, and independently verify the post-change state. The person chooses the exact action; MCPation then requests a separate, explicit browser write grant for that same folder, makes a sibling backup, applies only the supported JSON cleanup, and rescans.
+The person grants a bounded workspace and sees every scope and proposed change. Codex uses the same page's WebMCP tools to scan, inspect the declared tool surface, ask for the evidence behind a finding, propose hardening, and independently verify the post-change state. The person chooses the exact action; MCPation then requests a browser write escalation for that already selected folder, saves the original in `.mcpation-backups/`, applies only the supported JSON cleanup, and rescans.
 
 This is materially better than a generic report because the workflow ends in a safe, observable decision: **ready, review, or pause** before the next agent run.
 
@@ -32,7 +32,7 @@ WebMCP does not replace every installed MCP. It makes a complementary class of e
 
 ## Safety and scope
 
-The user selects a workspace folder; MCPation never claims whole-system access. Discovery is allowlisted and bounded. A supported write requires the user to select that folder again in the browser's native `readwrite` dialog. Downloaded MCP code is not executed. Package manifests are static evidence, not proof of live tools. WebMCP results omit secrets, environment values, headers, raw instructions, and full local paths. Ambiguous commands, TOML edits, policy changes, and instruction rewrites remain manual.
+The user selects a workspace folder; MCPation never claims whole-system access. Discovery is allowlisted and bounded. A supported write requires a browser `readwrite` escalation for that same handle, never a second folder selection. Originals go to `.mcpation-backups/`, which MCPation adds to an existing `.gitignore` when needed. Downloaded MCP code is not executed. Package manifests are static evidence, not proof of live tools. WebMCP results omit secrets, environment values, headers, raw instructions, and full local paths. Ambiguous commands, TOML edits, policy changes, and instruction rewrites remain manual.
 
 ## Demo story
 
@@ -44,7 +44,7 @@ The repository contains `demo-workspace`, a safe fixture with:
 - MCP package dependencies in `package.json`;
 - `AGENTS.md` and a Codex `SKILL.md`.
 
-The live app turns that fixture into a visible readiness score, a declared tool inventory, evidence cards, and a supervised duplicate-cleanup plan. The initial browser selection is read-only; after the user checks the exact JSON action, a second browser permission dialog grants write access only to the selected folder. MCPation backs up, applies, and rescans; Codex then verifies the same page state.
+The live app turns that fixture into a visible readiness score, a declared tool inventory, evidence cards, and a supervised duplicate-cleanup plan. The initial browser selection is read-only; after the user checks the exact JSON action, the browser escalates write access for that same selected folder. MCPation backs up, applies, and rescans; Codex then verifies the same page state.
 
 ## Implementation notes
 
