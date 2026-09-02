@@ -3,9 +3,9 @@
 ## Before recording
 
 1. Run `npm run verify` and confirm the deployed URL is <https://mcpation.vercel.app/>.
-2. Open the deployed page in Codex's in-app browser with a WebMCP-capable model. This is the browser used for the recorded end-to-end demo; Chrome 149+ with `chrome://flags/#enable-webmcp-testing` is also supported for native tool discovery.
+2. Open the deployed page in Codex's in-app browser with a WebMCP-capable model for the scan/review portion. For the real browser apply, open `https://mcpation.vercel.app/?browser=chrome` in Chrome 149+ with `chrome://flags/#enable-webmcp-testing` enabled.
 3. Keep the repository's `demo-workspace` folder ready to select. It contains no secrets and is intentionally small.
-4. If recording the apply step, select the reviewed JSON action and click **Approve & apply**. Approve the browser's write escalation for the folder already selected. MCPation stores a backup in `.mcpation-backups/`, adds it to an existing `.gitignore` when needed, applies only that exact action, and rescans.
+4. If recording the apply step in Chrome, select the reviewed JSON action and click **Approve & apply**. MCPation uses the one folder grant already selected, stores a backup in `.mcpation-backups/`, adds it to an existing `.gitignore` when needed, applies only that exact action, and rescans.
 
 ## Prompt to paste into Codex
 

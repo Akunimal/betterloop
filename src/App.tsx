@@ -22,6 +22,7 @@ export default function App() {
   const baselineScore = useRef<number | null>(null)
   const webmcpMode = getMCPationMode()
   const environmentMode = getEnvironmentAccessMode()
+  const nativeFolderMode = new URLSearchParams(window.location.search).get('browser') === 'chrome'
   const issues = useMemo(() => scan?.findings.filter((finding) => finding.severity !== 'healthy').length || 0, [scan])
   const plan = scan ? buildFixPlan(scan) : null
   const record = (label: string, detail: string, state: 'done' | 'active' = 'done') => setTrail((current) => [...current.slice(-4), { label, detail, state }])
@@ -49,7 +50,7 @@ export default function App() {
 
   const scanNow = async () => {
     if (!scan) {
-      if (supportsDirectDiskAccess() && !useImportFallback) {
+      if (nativeFolderMode && supportsDirectDiskAccess() && !useImportFallback) {
         setBusy(true)
         try {
           const result = await startConsentSession()
@@ -61,7 +62,7 @@ export default function App() {
         } catch (error) {
           if (error instanceof DOMException && error.name === 'AbortError') {
             setUseImportFallback(true)
-            setMessage('This embedded browser did not return a usable folder handle. Click Choose workspace folder once more to import it read-only; Chrome supports the complete browser apply flow.')
+            setMessage('Chrome did not return a usable folder handle. Click Choose workspace folder once more to import it read-only.')
           } else setMessage(error instanceof Error ? error.message : 'The browser could not read the selected workspace.')
         } finally { setBusy(false) }
         return

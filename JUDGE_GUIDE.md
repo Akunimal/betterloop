@@ -8,7 +8,7 @@ Open <https://mcpation.vercel.app/> in ChatGPT's in-app browser or Chrome 149+ w
 
 The submission's primary demo environment is Codex's in-app browser. Record the public video and primary end-to-end test there; Chrome support uses the same native `document.modelContext.registerTool` implementation and the deployment sends the WebMCP-required origin-isolation and same-origin `tools` permission-policy headers. This distinction is intentional: MCPation never represents a local fallback preview as a native WebMCP test.
 
-For a deterministic run, use the repository's `demo-workspace` folder. In browsers with File System Access, the page uses one native folder picker, then asks to elevate access on that same selected folder for the supported cleanup. It saves originals in `.mcpation-backups/` and adds that directory to an existing `.gitignore` when needed. It does not ask for a token, install, extension, or local service.
+For a deterministic run, use the repository's `demo-workspace` folder. In Chrome, open the app with `?browser=chrome`; it uses one native folder picker and one bounded workspace grant for the supported cleanup. Codex's embedded browser uses the stable read-only import path for analysis and review. It saves originals in `.mcpation-backups/` and adds that directory to an existing `.gitignore` when needed. It does not ask for a token, install, extension, or local service.
 
 ## Suggested Codex prompt
 
@@ -37,11 +37,11 @@ The dashboard should show a readiness score below 100, a declared surface with b
 
 ## Browser-approved apply path
 
-After the plan returns an exact deterministic action id, the person selects it in MCPation and clicks **Approve & apply**. The browser asks to elevate access on the folder already selected; it does not ask the person to browse for it again. MCPation stores the original in `.mcpation-backups/`, updates an existing `.gitignore` when needed, changes only the listed JSON key, and rescans. Codex then calls `codex_verify_workspace` to independently review the shared result. The tool-level host handoff remains a fallback contract because an agent tool call cannot open a user-gesture browser permission dialog.
+After the plan returns an exact deterministic action id, the person selects it in MCPation's Chrome `?browser=chrome` view and clicks **Approve & apply**. The browser uses the folder already selected; it does not ask the person to browse for it again. MCPation stores the original in `.mcpation-backups/`, updates an existing `.gitignore` when needed, changes only the listed JSON key, and rescans. Codex then calls `codex_verify_workspace` to independently review the shared result. The tool-level host handoff remains a fallback contract because an agent tool call cannot open a user-gesture browser permission dialog.
 
 ## Browser preview and write path
 
-Selecting a folder starts read-only by design. The browser analyzes only allowlisted files. The apply control is enabled only for an exact deterministic JSON cleanup selected by the person; it then requests a write escalation for that same folder handle. Discovery, explanation, planning, native browser approval, cleanup, rescan, and Codex verification complete without reopening the page elsewhere.
+Selecting a folder starts read-only by design. The browser analyzes only allowlisted files. Chrome's `?browser=chrome` apply control is enabled only for an exact deterministic JSON cleanup selected by the person and uses that same folder handle. Codex's embedded import path remains read-only. Discovery, explanation, planning, native browser approval, cleanup, rescan, and Codex verification complete without reopening the page elsewhere.
 
 ## What to verify
 

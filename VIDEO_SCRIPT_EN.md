@@ -5,12 +5,12 @@ Use a public recording with audio. Keep the live app and Codex interaction visib
 | Time | Visual | Narration |
 | --- | --- | --- |
 | 0:00–0:12 | MCPation open; `12 Codex tools ready` badge visible. | “MCPation is a Codex Environment Doctor. It makes the next agent run ready, explainable, and safer.” |
-| 0:12–0:27 | Select the `demo-workspace` folder; keep the scope card visible. | “I grant one workspace, never the whole disk. The browser reads an allowlist and never executes downloaded MCP code.” |
+| 0:12–0:27 | Select the `demo-workspace` folder in the Codex embed; keep the scope card visible. | “I grant one workspace, never the whole disk. The browser reads an allowlist and never executes downloaded MCP code.” |
 | 0:27–0:47 | Codex calls `codex_scan_workspace`; readiness score appears. | “WebMCP lets Codex use the same page the person is looking at. It sees MCP configuration, package evidence, AGENTS, and skills.” |
 | 0:47–1:05 | Show declared MCP surface and findings cards. | “The filesystem server is declared twice, the docs server is disabled, the legacy endpoint is invalid, and the package manifest contains MCP dependencies.” |
 | 1:05–1:20 | Codex calls `codex_explain_finding`; open **Review hardening**. | “The agent can explain the evidence behind one finding, then produce a plan that separates deterministic changes from manual review.” |
 | 1:20–1:42 | Select exactly one duplicate cleanup action. | “I choose the action. MCPation never invents a command, URL, policy, or instruction rewrite.” |
-| 1:42–2:00 | Click **Approve & apply**, approve the write escalation, then show `.mcpation-backups/` and the refreshed result. | “I explicitly grant write access only for the folder I already selected. MCPation backs up the JSON, applies only the checked action, and rescans immediately.” |
+| 1:42–2:00 | Switch to Chrome at `?browser=chrome`, select the same workspace once, click **Approve & apply**, then show `.mcpation-backups/` and the refreshed result. | “In Chrome, I grant one bounded workspace. MCPation backs up the JSON, applies only the checked action, and rescans immediately.” |
 | 2:00–2:15 | Ask Codex to call `codex_verify_workspace` and review the result; readiness card updates. | “Codex independently reviews what MCPation changed on the same visible state. That is WebMCP: structured collaboration on a real workflow, not a passive dashboard.” |
 
 ## Prompt shown in the video
