@@ -1,7 +1,7 @@
 import { analyzeCodexWorkspace, type WorkspaceFile } from './codex-analysis.ts'
 import { DEMO_CONFIG_DOCUMENTS, DEMO_WORKSPACE_FILES } from './demo-workspace.ts'
 import { CODEX_CONFIG_SOURCES as SOURCES, matchCodexSourceForPath } from './mcp-paths.ts'
-import type { AnalysisResult, ApplyResult, ConfigDocument } from './mcp-types.ts'
+import type { AnalysisResult, ApplyResult, ConfigDocument, WorkspaceAccessMode } from './mcp-types.ts'
 
 const DB_NAME = 'mcpation-files-v1'
 const STORE_NAME = 'handles'
@@ -10,12 +10,13 @@ const MAX_WORKSPACE_FILES = 240
 const MAX_WORKSPACE_DEPTH = 5
 const MAX_WORKSPACE_FILE_BYTES = 250_000
 const IGNORED_DIRECTORIES = new Set(['.git', 'node_modules', 'dist', 'build', 'coverage', '.next', 'graphify-out'])
-const WORKSPACE_FILE_NAMES = new Set(['.mcp.json', 'mcp.json', 'package.json', 'package-lock.json', 'pnpm-lock.yaml', 'yarn.lock', 'pyproject.toml', 'requirements.txt', 'uv.lock', 'poetry.lock', 'setup.py', 'agents.md', 'agents.override.md', 'skill.md'])
+const WORKSPACE_FILE_NAMES = new Set(['.mcp.json', 'mcp.json', 'package.json', 'package-lock.json', 'pnpm-lock.yaml', 'yarn.lock', 'pyproject.toml', 'requirements.txt', 'uv.lock', 'poetry.lock', 'setup.py', 'agents.md', 'agents.override.md'])
 let rootHandle: FileSystemDirectoryHandle | null = null
 let latestAnalysis: AnalysisResult | null = null
 let importedFiles: File[] = []
-let accessMode: 'direct' | 'import' | 'demo' | null = null
+let accessMode: WorkspaceAccessMode | null = null
 let demoFiles: WorkspaceFile[] | null = null
+let hostFiles: WorkspaceFile[] | null = null
 
 function openDatabase(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -78,6 +79,18 @@ async function readDocuments(root: FileSystemDirectoryHandle): Promise<ConfigDoc
   return documents
 }
 
+function configDocumentsForFiles(files: WorkspaceFile[], manualOnly: boolean): ConfigDocument[] {
+  const documents: ConfigDocument[] = []
+  const seen = new Set<string>()
+  for (const file of files) {
+    const match = matchCodexSourceForPath(file.path)
+    if (!match || seen.has(match.source.label)) continue
+    seen.add(match.source.label)
+    documents.push({ label: match.source.label, client: match.source.client, path: match.path.join('/'), format: match.source.format, text: file.text, manualOnly: manualOnly || match.source.manualOnly })
+  }
+  return documents
+}
+
 function isInterestingWorkspaceFile(path: string): boolean {
   const normalizedPath = path.replace(/\\/g, '/').toLowerCase()
   const name = normalizedPath.split('/').pop() || ''
@@ -117,13 +130,12 @@ async function scanRoot(root: FileSystemDirectoryHandle): Promise<AnalysisResult
   const workspaceFiles = await readWorkspaceFiles(root)
   latestAnalysis = analyzeCodexWorkspace(workspaceFiles, documents, { root: root.name, mode: 'direct', filesConsidered: workspaceFiles.length })
   accessMode = 'direct'
+  hostFiles = null
   window.dispatchEvent(new CustomEvent('mcpation:scan', { detail: latestAnalysis.scan }))
   return latestAnalysis
 }
 
 async function scanImportedFiles(files: File[]): Promise<AnalysisResult> {
-  const documents: ConfigDocument[] = []
-  const seen = new Set<string>()
   const workspaceFiles: WorkspaceFile[] = []
   for (const file of files) {
     const relativePath = file.webkitRelativePath || file.name
@@ -131,17 +143,36 @@ async function scanImportedFiles(files: File[]): Promise<AnalysisResult> {
     if (file.size > MAX_WORKSPACE_FILE_BYTES) continue
     const text = await file.text()
     workspaceFiles.push({ path: relativePath.replace(/^[^/]+\//, ''), text })
-    const match = matchCodexSourceForPath(relativePath)
-    if (!match || seen.has(match.source.label)) continue
-    seen.add(match.source.label)
-    documents.push({ label: match.source.label, client: match.source.client, path: match.path.join('/'), format: match.source.format, text, manualOnly: true })
   }
   if (!workspaceFiles.length) throw new Error('No Codex/MCP workspace files were found in that folder.')
-  latestAnalysis = analyzeCodexWorkspace(workspaceFiles, documents, { root: 'Imported workspace', mode: 'import', filesConsidered: workspaceFiles.length })
-  latestAnalysis.scan.proposals = latestAnalysis.scan.proposals.map((proposal) => proposal.canApply ? { ...proposal, kind: 'manual-review', canApply: false, detail: `${proposal.detail} Reopen this folder in a browser with direct File System Access to apply it here.` } : proposal)
-  latestAnalysis.scan.recommendations = latestAnalysis.scan.recommendations.map((item) => ({ ...item, action: item.action === 'Review the backed-up browser write' ? 'Review with Codex or reopen in a direct-access browser' : item.action }))
-  latestAnalysis.removals = []
+  latestAnalysis = analyzeCodexWorkspace(workspaceFiles, configDocumentsForFiles(workspaceFiles, false), { root: 'Imported workspace', mode: 'import', filesConsidered: workspaceFiles.length })
+  latestAnalysis.scan.proposals = latestAnalysis.scan.proposals.map((proposal) => proposal.canApply ? { ...proposal, detail: `${proposal.detail} This browser preview cannot write; ask Codex for the native host handoff to apply this exact action after approval.` } : proposal)
+  latestAnalysis.scan.recommendations = latestAnalysis.scan.recommendations.map((item) => ({ ...item, action: item.action === 'Review the backed-up browser write' ? 'Ask Codex for a native host handoff' : item.action }))
   accessMode = 'import'
+  hostFiles = null
+  window.dispatchEvent(new CustomEvent('mcpation:scan', { detail: latestAnalysis.scan }))
+  return latestAnalysis
+}
+
+function normalizeHostSnapshot(files: WorkspaceFile[]): WorkspaceFile[] {
+  if (!Array.isArray(files) || files.length === 0) throw new Error('Codex must provide at least one allowlisted workspace file.')
+  if (files.length > MAX_WORKSPACE_FILES) throw new Error(`Codex host snapshot exceeds the ${MAX_WORKSPACE_FILES}-file limit.`)
+  return files.map((file) => {
+    const rawPath = typeof file?.path === 'string' ? file.path : ''
+    if (!rawPath || /^(?:[A-Za-z]:[\\/]|[\\/]{1,2})/.test(rawPath)) throw new Error('Host snapshot path must be a relative path inside the Codex workspace allowlist.')
+    const path = rawPath.replace(/\\/g, '/').replace(/^\/+/, '')
+    if (path.split('/').includes('..') || !isInterestingWorkspaceFile(path)) throw new Error('Host snapshot path is outside the Codex workspace allowlist.')
+    if (typeof file.text !== 'string' || file.text.length > MAX_WORKSPACE_FILE_BYTES) throw new Error('Host snapshot file is missing text or exceeds the bounded file-size limit.')
+    return { path, text: file.text }
+  })
+}
+
+export function ingestHostSnapshot(files: WorkspaceFile[]): AnalysisResult {
+  hostFiles = normalizeHostSnapshot(files)
+  demoFiles = null
+  importedFiles = []
+  latestAnalysis = analyzeCodexWorkspace(hostFiles, configDocumentsForFiles(hostFiles, false), { root: 'Codex host workspace', mode: 'codex-host', filesConsidered: hostFiles.length })
+  accessMode = 'codex-host'
   window.dispatchEvent(new CustomEvent('mcpation:scan', { detail: latestAnalysis.scan }))
   return latestAnalysis
 }
@@ -154,6 +185,7 @@ function scanDemoFiles(): AnalysisResult {
     { ...DEMO_CONFIG_DOCUMENTS[1], text: files.find((file) => file.path === '.mcp.json')?.text || '' },
   ], { root: 'demo-workspace', mode: 'demo', filesConsidered: files.length })
   accessMode = 'demo'
+  hostFiles = null
   window.dispatchEvent(new CustomEvent('mcpation:scan', { detail: latestAnalysis.scan }))
   return latestAnalysis
 }
@@ -190,13 +222,15 @@ export function startDemoEnvironment(): AnalysisResult {
 export async function rescanEnvironment(): Promise<AnalysisResult> {
   if (accessMode === 'demo') return scanDemoFiles()
   if (accessMode === 'import' && importedFiles.length) return scanImportedFiles(importedFiles)
+  if (accessMode === 'codex-host' && hostFiles) return ingestHostSnapshot(hostFiles)
   rootHandle ||= await restoreRoot()
   if (!rootHandle || !(await permissionGranted(rootHandle))) throw new Error('Ask the user to connect their environment folder from the visible page first.')
   return scanRoot(rootHandle)
 }
 
 export async function applyBrowserFixes(actionIds: string[]): Promise<ApplyResult> {
-  if (accessMode === 'import') throw new Error('This embedded browser granted read-only folder import. Review the plan with Codex or reopen MCPation in a direct-access browser to write backups and fixes.')
+  if (accessMode === 'import') throw new Error('This embedded browser granted read-only folder import. Ask Codex for a host handoff to request native filesystem approval before writing.')
+  if (accessMode === 'codex-host') throw new Error('This scan belongs to the Codex host. Ask Codex to execute the reviewed host handoff with native filesystem approval.')
   if (accessMode === 'demo') {
     if (!latestAnalysis || !demoFiles) throw new Error('Start the deterministic demo before applying a demo action.')
     const requested = [...new Set(actionIds)]

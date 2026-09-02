@@ -34,6 +34,28 @@ export interface ReadinessScore {
   signals: string[]
 }
 
+export type WorkspaceAccessMode = 'direct' | 'import' | 'demo' | 'codex-host'
+
+export interface HostHandoff {
+  protocol: 'mcpation-codex-host/v1'
+  status: 'approval-required' | 'rescan-required' | 'review-required'
+  operation: 'scan' | 'apply'
+  scope: {
+    root: 'current Codex workspace root'
+    relativeAllowlist: string[]
+    maxFiles: number
+    maxDepth: number
+  }
+  permissionRequest: {
+    mode: 'read' | 'write'
+    reason: string
+    nativePermissionFlow: 'Codex host approval'
+    preferredTools: string[]
+  }
+  actions: Array<{ actionId: string; path: string; serverName: string; operation: 'remove-json-entry'; backup: string }>
+  nextSteps: string[]
+}
+
 export interface MCPServer {
   id: string
   name: string
@@ -53,7 +75,7 @@ export interface ScanResult {
   schemaVersion: number
   scannedAt: string
   platform: string
-  scope: { root: string; mode: 'direct' | 'import' | 'demo'; filesConsidered: number }
+  scope: { root: string; mode: WorkspaceAccessMode; filesConsidered: number }
   host: HostProfile
   sources: string[]
   supportedSources: string[]
@@ -66,6 +88,7 @@ export interface ScanResult {
   toolSurface: ToolSurfaceEntry[]
   instructionChain: InstructionEntry[]
   readiness: ReadinessScore
+  hostHandoff?: HostHandoff
   privacy: string
 }
 

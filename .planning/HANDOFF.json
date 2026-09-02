@@ -1,6 +1,6 @@
 {
   "version": "2.0",
-  "timestamp": "2026-09-02T01:13:00Z",
+  "timestamp": "2026-09-02T01:25:00Z",
   "phase": "codex-environment-doctor",
   "phase_name": "Codex workspace readiness gate",
   "status": "ready_for_recording",
@@ -11,7 +11,8 @@
     "Added browser analysis tests",
     "Added Codex workspace artifact, package, instruction-chain, and readiness analysis",
     "Added deterministic hardening apply and verify tools with backup validation",
-    "Added a safe demo-workspace fixture and rewrote delivery/recording docs"
+    "Added a safe demo-workspace fixture and rewrote delivery/recording docs",
+    "Added Codex host handoff and sanitized snapshot bridge for native permission-gated work"
   ],
   "remaining_tasks": [
     "Record the public demo video"
@@ -21,7 +22,8 @@
     "Filesystem access requires a visible native browser permission; WebMCP never opens a picker implicitly.",
     "Only bounded Codex/MCP config, package, instruction, and skill metadata inside the granted workspace are read.",
     "Downloaded MCP code is never executed; static package evidence is not presented as live runtime state.",
-    "Only exact deterministic JSON duplicate actions can be applied after backup and explicit review."
+    "Only exact deterministic JSON duplicate actions can be applied after backup and explicit review.",
+    "When the page lacks host filesystem scope, WebMCP returns a bounded Codex host handoff; Codex requests native approval, uses host fs tools, and submits a sanitized snapshot back to the page."
   ],
   "next_action": "Record the public demo using DEMO_RUNBOOK.md; the code, docs, map, tests, and deployment are ready."
 }

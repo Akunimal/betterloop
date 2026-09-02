@@ -2,7 +2,7 @@
 
 **Make Codex ready before it runs.** MCPation is a browser-native WebMCP app that turns one explicitly granted workspace into an explainable readiness gate for MCP configuration, downloaded MCP package signals, `AGENTS.md`, and Codex skills.
 
-The agent and the person see the same state: Codex can scan, explain a finding, propose hardening, apply only an exact deterministic cleanup, and verify the result. Nothing is installed and no model/API key is needed.
+The agent and the person see the same state: Codex can scan, explain a finding, propose hardening, request a native host capability when the page needs it, apply only an exact deterministic cleanup, and verify the result. Nothing is installed and no model/API key is needed.
 
 ## Why this matters
 
@@ -22,11 +22,13 @@ The page registers these top-level `document.modelContext` tools when WebMCP is 
 - `codex_get_instruction_chain` — inspect ordered `AGENTS.md` and `SKILL.md` metadata without returning their text.
 - `codex_explain_finding` — explain one finding by its current id.
 - `codex_plan_hardening` — produce a review-only plan with deterministic and manual actions separated.
+- `codex_request_host_handoff` — return a bounded read/write handshake for Codex's native host permission flow.
+- `codex_submit_host_snapshot` — ingest an allowlisted snapshot read by Codex after host approval and update the shared page.
 - `codex_apply_hardening` — after explicit review, create a sibling backup and apply selected duplicate JSON cleanup.
 - `codex_verify_workspace` — rescan after a change and return the new score and findings.
 - `codex_get_access_scope` — explain the exact browser-granted boundary and privacy guarantees.
 
-Read-only tools are annotated `readOnlyHint: true`. The apply tool is explicitly non-read-only and requires `actionIds` from the latest plan plus `confirm: true`; it never invents commands, URLs, policy, or instruction text.
+Read-only tools are annotated `readOnlyHint: true`. The apply tool is explicitly non-read-only and requires `actionIds` from the latest plan plus `confirm: true`; when the page cannot write, it returns the host handoff instead of pretending to apply. It never invents commands, URLs, policy, or instruction text.
 
 ## What is scanned
 
@@ -40,9 +42,9 @@ Downloaded MCP code is never executed. Package entries are static evidence; they
 
 ## Permission model
 
-A normal web page starts with no filesystem access. The visible **Connect workspace folder** action requests the browser's native directory permission. Direct-access browsers can create a sibling backup and apply selected JSON cleanup. Codex's embedded browser may expose a read-only directory import; in that mode diagnosis and WebMCP still work, while the apply action correctly remains disabled.
+A normal web page starts with no filesystem access. The visible **Connect workspace folder** action requests the browser's native directory permission. If the browser only offers an import preview, Codex can call `codex_request_host_handoff`, ask its own host for read/write approval, use native `fs/*` tools, and submit an allowlisted snapshot back to this page. Direct browser access remains a convenient UI path, but it is not required for the Codex flow.
 
-This is the honest WebMCP boundary: WebMCP exposes page actions to Codex, but it does not bypass browser permissions or grant arbitrary operating-system access.
+This is the honest WebMCP boundary: WebMCP exposes page actions to Codex, while Codex's host permission flow handles operations the page cannot perform. The page never invokes host permissions or claims arbitrary operating-system access.
 
 ## Try the deterministic demo
 
@@ -51,7 +53,7 @@ The repository includes [`demo-workspace`](demo-workspace) with safe, intentiona
 1. Open the deployed app: <https://mcpation.vercel.app/>.
 2. Choose `demo-workspace` in the folder picker/import flow.
 3. Let Codex call `codex_scan_workspace`, `codex_get_tool_inventory`, `codex_get_findings`, and `codex_plan_hardening`.
-4. Review the duplicate proposal. In a direct-access browser, call `codex_apply_hardening` with the exact action id and then `codex_verify_workspace`.
+4. Review the duplicate proposal. If the page is only a preview, call `codex_request_host_handoff` with `operation: "apply"`; after native approval, submit the refreshed files with `codex_submit_host_snapshot` and call `codex_verify_workspace`. Direct browsers may use `codex_apply_hardening` instead.
 
 ## Local development
 
@@ -66,15 +68,16 @@ npm run verify
 ## Architecture
 
 ```text
-visible folder grant
+visible folder grant or Codex host approval
         ↓
 bounded browser file reader
         ↓
 deterministic Codex readiness analyzer
         ↓
 document.modelContext WebMCP tools
-        ↓
-human-reviewed hardening + backup
+        ↘ host handoff → Codex native permission + fs/*
+        ↓                         ↘
+human-reviewed hardening + backup ← sanitized snapshot
         ↓
 rescan and verification
 ```

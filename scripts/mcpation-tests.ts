@@ -1,9 +1,11 @@
 import assert from 'node:assert/strict'
 import { analyzeCodexWorkspace } from '../src/codex-analysis.ts'
-import { applyBrowserFixes, startDemoEnvironment } from '../src/mcp-files.ts'
+import { applyBrowserFixes, ingestHostSnapshot, startDemoEnvironment } from '../src/mcp-files.ts'
 import { analyzeDocuments } from '../src/mcp-analysis.ts'
-import { parseCleanupToolInput } from '../src/mcp-tool-input.ts'
+import { parseCleanupToolInput, parseHostHandoffInput, parseHostSnapshotInput } from '../src/mcp-tool-input.ts'
 import { matchSourceForPath } from '../src/mcp-paths.ts'
+import { buildHostApplyHandoff, buildHostScanHandoff } from '../src/codex-handoff.ts'
+import { DEMO_WORKSPACE_FILES } from '../src/demo-workspace.ts'
 import type { ConfigDocument } from '../src/mcp-types.ts'
 
 const documents: ConfigDocument[] = [
@@ -55,7 +57,24 @@ assert.ok(enriched.toolSurface.some((entry) => entry.kind === 'package-dependenc
 assert.ok(enriched.toolSurface.some((entry) => entry.kind === 'configured-server'))
 assert.ok(enriched.readiness.value > 0)
 
+const hostScanHandoff = buildHostScanHandoff('import')
+assert.equal(hostScanHandoff.protocol, 'mcpation-codex-host/v1')
+assert.equal(hostScanHandoff.operation, 'scan')
+assert.equal(hostScanHandoff.permissionRequest.mode, 'read')
+assert.ok(hostScanHandoff.scope.relativeAllowlist.includes('.codex/config.toml'))
+
 ;(globalThis as any).window = { dispatchEvent: () => true }
+const host = ingestHostSnapshot(DEMO_WORKSPACE_FILES)
+assert.equal(host.scan.scope.mode, 'codex-host')
+assert.equal(host.removals.length, 2)
+assert.throws(() => ingestHostSnapshot([{ path: 'C:/private/.mcp.json', text: '{}' }]), /relative path/)
+const hostApplyHandoff = buildHostApplyHandoff(host, [host.removals[0].actionId], 'codex-host')
+assert.equal(hostApplyHandoff.operation, 'apply')
+assert.equal(hostApplyHandoff.permissionRequest.mode, 'write')
+assert.equal(hostApplyHandoff.actions[0].actionId, host.removals[0].actionId)
+assert.equal(buildHostApplyHandoff(host, [host.removals[0].actionId], 'import').actions.length, 1)
+assert.equal(buildHostApplyHandoff(host, [host.removals[0].actionId], 'demo').status, 'rescan-required')
+
 const demo = startDemoEnvironment()
 assert.equal(demo.scan.scope.mode, 'demo')
 assert.equal(demo.removals.length, 2)
@@ -68,6 +87,10 @@ delete (globalThis as any).window
 assert.deepEqual(parseCleanupToolInput({ actionIds: ['remove-one', 'remove-one'], confirm: true }), ['remove-one'])
 assert.throws(() => parseCleanupToolInput({ actionIds: ['remove-one'] }), /confirm: true/)
 assert.throws(() => parseCleanupToolInput({ actionIds: [] , confirm: true }), /non-empty array/)
+assert.deepEqual(parseHostHandoffInput({ operation: 'scan' }), { operation: 'scan', actionIds: [] })
+assert.deepEqual(parseHostHandoffInput({ operation: 'apply', actionIds: ['one', 'one'] }), { operation: 'apply', actionIds: ['one'] })
+assert.equal(parseHostSnapshotInput({ files: [{ path: '.mcp.json', text: '{}' }] })[0].path, '.mcp.json')
+assert.throws(() => parseHostSnapshotInput({ files: [] }), /non-empty array/)
 
 const empty = analyzeDocuments([], 'test').scan
 assert.equal(empty.servers.length, 0)

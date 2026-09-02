@@ -17,7 +17,7 @@ function artifactKind(path: string): WorkspaceArtifactKind | null {
   if (value.endsWith('/.codex/config.toml') || value === '.codex/config.toml') return 'codex-config'
   if (name === '.mcp.json' || name === 'mcp.json') return 'mcp-config'
   if (name === 'agents.md' || name === 'agents.override.md') return 'instruction'
-  if (name === 'skill.md' && value.includes('/skills/')) return 'skill'
+  if (name === 'skill.md' && (value.includes('/skills/') || value.startsWith('skills/'))) return 'skill'
   if (name === 'package.json' || name === 'pyproject.toml' || name === 'requirements.txt' || name === 'setup.py') return 'package-manifest'
   if (name === 'package-lock.json' || name === 'pnpm-lock.yaml' || name === 'yarn.lock' || name === 'uv.lock' || name === 'poetry.lock') return 'lockfile'
   return null
