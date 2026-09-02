@@ -375,6 +375,7 @@ export async function applyBrowserFixes(actionIds: string[]): Promise<ApplyResul
     const appliedActionIds: string[] = []
     const skippedActionIds: string[] = []
     const backups: string[] = []
+    const backupPaths = new Set<string>()
     for (const action of latestAnalysis.removals.filter((item) => requested.includes(item.actionId))) {
       const file = demoFiles.find((item) => item.path === action.path)
       if (!file) { skippedActionIds.push(action.actionId); continue }
@@ -384,7 +385,11 @@ export async function applyBrowserFixes(actionIds: string[]): Promise<ApplyResul
         delete document[action.groupKey][action.serverName]
         file.text = `${JSON.stringify(document, null, 2)}\n`
         appliedActionIds.push(action.actionId)
-        backups.push(`${action.path}.mcpation-demo.bak`)
+        const backupPath = `${action.path}.mcpation-demo.bak`
+        if (!backupPaths.has(action.path)) {
+          backupPaths.add(action.path)
+          backups.push(backupPath)
+        }
       } catch { skippedActionIds.push(action.actionId) }
     }
     const result = scanDemoFiles()
@@ -400,6 +405,7 @@ export async function applyBrowserFixes(actionIds: string[]): Promise<ApplyResul
   const appliedActionIds: string[] = []
   const skippedActionIds: string[] = []
   const backups: string[] = []
+  const backupByPath = new Map<string, string>()
   for (const action of actions) {
     try {
       const parts = action.path.split('/')
@@ -409,13 +415,17 @@ export async function applyBrowserFixes(actionIds: string[]): Promise<ApplyResul
       const original = await file.text()
       const document = JSON.parse(original) as Record<string, Record<string, unknown>>
       if (!document[action.groupKey] || !(action.serverName in document[action.groupKey])) { skippedActionIds.push(action.actionId); continue }
-      const backupPath = await createWorkspaceBackup(rootHandle, action.path, original, action.actionId)
+      let backupPath = backupByPath.get(action.path)
+      if (!backupPath) {
+        backupPath = await createWorkspaceBackup(rootHandle, action.path, original, action.actionId)
+        backupByPath.set(action.path, backupPath)
+        backups.push(backupPath)
+      }
       delete document[action.groupKey][action.serverName]
       const writer = await handle.createWritable()
       await writer.write(`${JSON.stringify(document, null, 2)}\n`)
       await writer.close()
       appliedActionIds.push(action.actionId)
-      backups.push(backupPath)
     } catch {
       skippedActionIds.push(action.actionId)
     }

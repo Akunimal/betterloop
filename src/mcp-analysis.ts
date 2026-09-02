@@ -102,10 +102,12 @@ export function analyzeDocuments(documents: ConfigDocument[], platform = typeof 
     for (const duplicate of duplicates) {
       const actionId = `remove-${duplicate.id}`
       const canApply = duplicate.format === 'json' && duplicate.strictJson && !duplicate.manualOnly && Boolean(duplicate.groupKey)
+      const duplicateKey = `${duplicate.groupKey}.${duplicate.name}`
+      const canonicalKey = keep.format === 'toml' ? `mcp_servers.${keep.name}` : `${keep.groupKey}.${keep.name}`
       proposals.push({
         id: actionId,
-        title: `Remove duplicate ${duplicate.name} from ${duplicate.path}`,
-        detail: `Deletes only the mcpServers.${duplicate.name} key in ${duplicate.path}. The canonical ${keep.name} definition in ${keep.path} stays active; MCPation backs up the JSON file first and leaves TOML, commands, and other findings untouched.`,
+        title: `Remove the extra “${duplicate.name}” entry from ${duplicate.path}`,
+        detail: `What changes: delete only ${duplicateKey} in ${duplicate.path}. What stays: the canonical ${canonicalKey} in ${keep.path} remains active, and any unchecked entry remains. Safety: MCPation saves the complete original ${duplicate.path} once in .mcpation-backups/ before writing. TOML, commands, policies, and instruction files are untouched.`,
         kind: canApply ? 'remove-json-entry' : 'manual-review',
         canApply,
       })
