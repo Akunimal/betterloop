@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { analyzeCodexWorkspace } from '../src/codex-analysis.ts'
-import { applyBrowserFixes, ingestHostSnapshot, startDemoEnvironment } from '../src/mcp-files.ts'
+import { applyBrowserFixes, connectWritableEnvironment, ingestHostSnapshot, startDemoEnvironment } from '../src/mcp-files.ts'
 import { analyzeDocuments } from '../src/mcp-analysis.ts'
 import { parseCleanupToolInput, parseHostHandoffInput, parseHostSnapshotInput } from '../src/mcp-tool-input.ts'
 import { matchSourceForPath } from '../src/mcp-paths.ts'
@@ -103,6 +103,66 @@ const demoApplied = await applyBrowserFixes([demo.removals[0].actionId])
 assert.deepEqual(demoApplied.appliedActionIds, [demo.removals[0].actionId])
 assert.equal(demoApplied.backups[0], '.mcp.json.mcpation-demo.bak')
 assert.equal(demoApplied.scan.findings.some((finding) => finding.title.startsWith('Exact duplicate:')), true)
+
+class MemoryFile {
+  kind = 'file' as const
+  name: string
+  value: string
+  constructor(name: string, value: string) { this.name = name; this.value = value }
+  async getFile() { return { size: Buffer.byteLength(this.value), text: async () => this.value } }
+  async createWritable() {
+    let next = ''
+    return { write: async (value: string) => { next = value }, close: async () => { this.value = next } }
+  }
+  text() { return this.value }
+}
+
+class MemoryDirectory {
+  kind = 'directory' as const
+  readonly entries = new Map<string, MemoryDirectory | MemoryFile>()
+  requests = 0
+  name: string
+  constructor(name: string) { this.name = name }
+  async *values() { yield* this.entries.values() }
+  async getDirectoryHandle(name: string, options?: { create?: boolean }) {
+    const entry = this.entries.get(name)
+    if (entry?.kind === 'directory') return entry
+    if (options?.create) { const directory = new MemoryDirectory(name); this.entries.set(name, directory); return directory }
+    throw new Error(`Missing directory ${name}`)
+  }
+  async getFileHandle(name: string, options?: { create?: boolean }) {
+    const entry = this.entries.get(name)
+    if (entry?.kind === 'file') return entry
+    if (options?.create) { const file = new MemoryFile(name, ''); this.entries.set(name, file); return file }
+    throw new Error(`Missing file ${name}`)
+  }
+  async queryPermission() { return 'granted' as const }
+  async requestPermission() { this.requests += 1; return 'granted' as const }
+}
+
+const browserRoot = new MemoryDirectory('browser-workspace')
+const codexDir = new MemoryDirectory('.codex')
+codexDir.entries.set('config.toml', new MemoryFile('config.toml', 'shell = "pwsh"\n\n[mcp_servers.filesystem]\ncommand = "npx"\nargs = ["-y", "@modelcontextprotocol/server-filesystem", "./workspace"]\n'))
+browserRoot.entries.set('.codex', codexDir)
+const browserMcp = new MemoryFile('.mcp.json', JSON.stringify({ mcpServers: {
+  filesystem: { command: 'npx', args: ['-y', '@modelcontextprotocol/server-filesystem', './workspace'] },
+  'filesystem-copy': { command: 'npx', args: ['-y', '@modelcontextprotocol/server-filesystem', './workspace'] },
+} }))
+browserRoot.entries.set('.mcp.json', browserMcp)
+;(globalThis as any).window = {
+  dispatchEvent: () => true,
+  showDirectoryPicker: async () => browserRoot,
+}
+const direct = await connectWritableEnvironment()
+const directAction = direct.removals.find((item) => item.path === '.mcp.json')
+assert.ok(directAction)
+const directApplied = await applyBrowserFixes([directAction.actionId])
+assert.deepEqual(directApplied.appliedActionIds, [directAction.actionId])
+assert.equal(directApplied.skippedActionIds.length, 0)
+assert.equal(browserRoot.requests, 1)
+assert.match(browserMcp.text(), /filesystem/)
+assert.equal(Object.keys(JSON.parse(browserMcp.text()).mcpServers).length, 1)
+assert.ok([...browserRoot.entries.keys()].some((name) => /^\.mcp\.json\.mcpation-.*\.bak$/.test(name)))
 delete (globalThis as any).window
 
 assert.deepEqual(parseCleanupToolInput({ actionIds: ['remove-one', 'remove-one'], confirm: true }), ['remove-one'])

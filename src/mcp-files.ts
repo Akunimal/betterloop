@@ -134,8 +134,6 @@ async function scanImportedFiles(files: File[]): Promise<AnalysisResult> {
   }
   if (!workspaceFiles.length) throw new Error('No Codex/MCP workspace files were found in that folder.')
   latestAnalysis = analyzeCodexWorkspace(workspaceFiles, configDocumentsForFiles(workspaceFiles, false), { root: 'Imported workspace', mode: 'import', filesConsidered: workspaceFiles.length })
-  latestAnalysis.scan.proposals = latestAnalysis.scan.proposals.map((proposal) => proposal.canApply ? { ...proposal, detail: `${proposal.detail} This browser preview cannot write; ask Codex for the native host handoff to apply this exact action after approval.` } : proposal)
-  latestAnalysis.scan.recommendations = latestAnalysis.scan.recommendations.map((item) => ({ ...item, action: item.action === 'Review the backed-up browser write' ? 'Ask Codex for a native host handoff' : item.action }))
   accessMode = 'import'
   hostFiles = null
   window.dispatchEvent(new CustomEvent('mcpation:scan', { detail: latestAnalysis.scan }))
