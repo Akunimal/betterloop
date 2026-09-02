@@ -6,7 +6,7 @@ Open <https://mcpation.vercel.app/> in ChatGPT's in-app browser or Chrome 149+ w
 
 ## Validation record
 
-The submitted video and primary end-to-end test were recorded in Codex's in-app browser. Chrome support uses the same native `document.modelContext.registerTool` implementation and the deployment sends the WebMCP-required origin-isolation and same-origin `tools` permission-policy headers. This distinction is intentional: MCPation never represents a local fallback preview as a native WebMCP test.
+The submission's primary demo environment is Codex's in-app browser. Record the public video and primary end-to-end test there; Chrome support uses the same native `document.modelContext.registerTool` implementation and the deployment sends the WebMCP-required origin-isolation and same-origin `tools` permission-policy headers. This distinction is intentional: MCPation never represents a local fallback preview as a native WebMCP test.
 
 For a deterministic run, use the repository's `demo-workspace` folder. The page asks for one explicit folder grant/import; if the browser cannot grant host access, Codex can request the native host handoff. It does not ask for a token, install, extension, or local service.
 
