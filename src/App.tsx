@@ -11,7 +11,7 @@ export default function App() {
   const [scan, setScan] = useState<ScanResult | null>(getLatestScan())
   const [registered, setRegistered] = useState(false)
   const [busy, setBusy] = useState(false)
-  const [message, setMessage] = useState('Ready to audit a Codex workspace.')
+  const [message, setMessage] = useState('Choose a workspace and we’ll check what Codex is about to inherit.')
   const [showPlan, setShowPlan] = useState(false)
   const [selectedFixes, setSelectedFixes] = useState<string[]>([])
   const [baseline, setBaseline] = useState<ScanResult | null>(null)
@@ -28,12 +28,12 @@ export default function App() {
 
   useEffect(() => {
     const refresh = (event: Event) => setScan((event as CustomEvent<ScanResult>).detail || getLatestScan())
-    const handoff = () => { setMessage('Codex host handoff requested. Review and approve the native filesystem capability, then return the sanitized snapshot.'); record('Host approval requested', 'Codex must obtain the exact scoped capability before any write.', 'active') }
+    const handoff = () => { setMessage('Codex is ready to ask for your approval before it changes anything.'); record('Waiting for your approval', 'Codex needs permission only for the exact change you selected.', 'active') }
     const verified = (event: Event) => {
       const result = (event as CustomEvent<{ readiness: ScanResult['readiness']; findings: ScanResult['findings'] }>).detail
       const improved = baselineScore.current !== null && result.readiness.value > baselineScore.current
       record('Post-change verification complete', `${result.readiness.value}/100 · ${result.findings.filter((item) => item.severity !== 'healthy').length} remaining finding(s).`)
-      setMessage(improved ? 'Verified improvement: the approved cleanup changed the shared readiness state.' : 'Verification complete. The shared page reflects the current sanitized snapshot.')
+      setMessage(improved ? 'Nice — the approved cleanup worked, and the workspace is now in a better state.' : 'Verification complete. This page now reflects the workspace Codex checked.')
       if (improved) { setCelebrating(true); window.setTimeout(() => setCelebrating(false), 2600) }
     }
     window.addEventListener('mcpation:scan', refresh)
@@ -57,8 +57,8 @@ export default function App() {
       const result = await rescanConnectedEnvironment()
       setScan(result)
       setShowPlan(false)
-      setMessage(`Audit complete. Codex readiness: ${result.readiness.value}/100.`)
-      record('Workspace rescanned', `${result.readiness.value}/100 after the latest visible state.`)
+      setMessage(`Check complete. Codex readiness is ${result.readiness.value}/100.`)
+      record('Workspace checked again', `${result.readiness.value}/100 based on the latest visible state.`)
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'The browser could not access the selected workspace.')
     } finally { setBusy(false) }
@@ -72,9 +72,9 @@ export default function App() {
       setScan(result)
       setBaseline(result)
       baselineScore.current = result.readiness.value
-      setTrail([{ label: 'Baseline captured', detail: `${result.readiness.value}/100 · ${result.findings.filter((item) => item.severity !== 'healthy').length} finding(s) before any approved change.`, state: 'done' }])
+      setTrail([{ label: 'Starting point saved', detail: `${result.readiness.value}/100 · ${result.findings.filter((item) => item.severity !== 'healthy').length} thing(s) to review before any change.`, state: 'done' }])
       setShowPlan(false)
-      setMessage(`Browser preview complete. Codex host handoff is available. Readiness: ${result.readiness.value}/100.`)
+      setMessage(`Workspace checked. Codex can now help you review the next step. Readiness: ${result.readiness.value}/100.`)
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'The browser could not read the selected workspace.')
     } finally {
@@ -89,8 +89,8 @@ export default function App() {
     if (!selectedFixes.length) return
     requestHostHandoff('apply', selectedFixes)
     setHandoffReady(true)
-    record('Approved cleanup staged', `${selectedFixes.length} exact action(s) are ready for Codex's scoped write approval.`)
-    setMessage('Approval handoff ready. Let Codex request the scoped write capability, make the backup, then submit the refreshed snapshot here.')
+    record('Your choice is ready', `${selectedFixes.length} selected change(s) are ready for your approval.`)
+    setMessage('Your selected change is ready. Codex will ask only for the permission it needs, make a backup, and bring the result back here.')
   }
 
   const applyFixes = async () => {
@@ -102,8 +102,8 @@ export default function App() {
       setScan(result)
       setSelectedFixes([])
       setShowPlan(false)
-      setMessage(getEnvironmentAccessMode() === 'demo' ? 'Demo hardening applied in memory and verified. No disk file was changed.' : 'Hardening applied. A sibling backup was created and the workspace was verified.')
-      record('Approved cleanup applied', `${selectedFixes.length} exact action(s) applied and verified in the current visible state.`)
+      setMessage(getEnvironmentAccessMode() === 'demo' ? 'Demo cleanup complete and checked. No disk file was changed.' : 'Cleanup complete. A backup was created and the workspace was checked again.')
+      record('Your approved cleanup is complete', `${selectedFixes.length} selected change(s) were applied and checked.`)
       if (baseline && result.readiness.value > baseline.readiness.value) { setCelebrating(true); window.setTimeout(() => setCelebrating(false), 2600) }
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'The reviewed hardening changes could not be applied.')
@@ -120,14 +120,14 @@ export default function App() {
       <div>
         <p className="kicker">CODEX WORKSPACE PRE-FLIGHT</p>
         <h1>Know what Codex<br /><em>will inherit.</em></h1>
-        <p className="lede">Choose one workspace. MCPation reads its MCP configuration, package signals, AGENTS, and skills, then turns configuration drift into a clear readiness decision.</p>
+        <p className="lede">Choose one workspace. MCPation looks at the MCP setup, packages, AGENTS, and skills Codex will see — then helps you decide what is ready and what deserves a closer look.</p>
       </div>
       <aside className="connect-card">
         <div className="card-eyebrow"><span className="status-dot" /> WORKSPACE SCOPE</div>
-        <h2>{scan ? scan.scope.root : 'Choose a workspace'}</h2>
+        <h2>{scan ? scan.scope.root : 'Start with one workspace'}</h2>
         <input ref={folderInput} type="file" multiple hidden onChange={(event) => void importFolder(event.currentTarget.files)} {...({ webkitdirectory: '' } as { webkitdirectory: string })} />
         <button className="primary-button" onClick={() => void scanNow()} disabled={busy}>{busy ? 'Analyzing workspace…' : scan ? 'Rescan workspace' : 'Choose workspace folder'} <b>→</b></button>
-        <small>{scan?.scope.mode === 'codex-host' ? 'Codex host scope; only allowlisted snapshots return here.' : 'Read-only analysis. No code runs and nothing is changed.'} Never scans outside the selected scope.</small>
+        <small>{scan?.scope.mode === 'codex-host' ? 'Codex is checking the workspace you approved; only the agreed summary comes back here.' : 'This first check is read-only. Nothing runs and nothing changes.'} It never looks outside the workspace you chose.</small>
       </aside>
     </section>
 
@@ -138,18 +138,18 @@ export default function App() {
       <div><small>INSTRUCTIONS</small><strong>{scan ? scan.instructionChain.length : '—'}</strong></div>
     </section>
 
-    <section className="run-state"><span className="pulse" /><strong>{message}</strong><small>{scan ? `${scan.scope.mode} · ${getMCPationMode()} WebMCP · ${scan.scope.filesConsidered} files considered` : 'No workspace has been selected'}</small></section>
+    <section className="run-state"><span className="pulse" /><strong>{message}</strong><small>{scan ? `${scan.scope.mode} · ${getMCPationMode()} WebMCP · ${scan.scope.filesConsidered} relevant files checked` : 'No workspace selected yet'}</small></section>
 
-    {scan && <section className="audit-trail"><div><p className="kicker">VISIBLE AUDIT TRAIL</p><strong>Before → approval → verified after</strong></div><div className="trail-steps">{trail.map((item, index) => <article key={`${item.label}-${index}`} className={item.state}><b>{String(index + 1).padStart(2, '0')}</b><span><strong>{item.label}</strong><small>{item.detail}</small></span></article>)}</div></section>}
+    {scan && <section className="audit-trail"><div><p className="kicker">YOUR CHECKLIST</p><strong>See what changed, every step of the way</strong></div><div className="trail-steps">{trail.map((item, index) => <article key={`${item.label}-${index}`} className={item.state}><b>{String(index + 1).padStart(2, '0')}</b><span><strong>{item.label}</strong><small>{item.detail}</small></span></article>)}</div></section>}
 
     {!scan ? <section className="empty-state">
       <div className="empty-icon">◎</div>
-      <div><p className="kicker">ONE WORKSPACE · READ ONLY</p><h2>Start with the workspace Codex will use.</h2><p>MCPation reads only allowlisted config, package, instruction, and skill files. Codex can inspect the same findings; any write remains a separate, explicit host approval.</p></div>
-      <div className="empty-steps"><span><b>01</b> Select workspace</span><span><b>02</b> Inspect findings</span><span><b>03</b> Review next step</span></div>
+      <div><p className="kicker">ONE WORKSPACE · READ ONLY</p><h2>Start with the workspace Codex is about to use.</h2><p>MCPation only reads the setup files that matter. You and Codex see the same result; any change stays separate and needs your clear approval.</p></div>
+      <div className="empty-steps"><span><b>01</b> Choose workspace</span><span><b>02</b> See what needs attention</span><span><b>03</b> Decide what to do</span></div>
     </section> : <>
       <section className="readiness-row">
-        <div className={'score-card ' + readinessClass(scan)}><div className="score-ring"><strong>{scan.readiness.value}</strong><small>/100</small></div><div><p className="kicker">READINESS GATE</p><h2>{scan.readiness.label === 'ready' ? 'Ready for the next run' : scan.readiness.label === 'needs-attention' ? 'Review before the next run' : 'Pause and harden first'}</h2><p>{scan.readiness.signals.join(' · ')}</p></div></div>
-        <div className="scope-card"><p className="kicker">WHAT IS IN SCOPE</p><strong>{scan.scope.root}</strong><span>{scan.scope.mode === 'demo' ? 'Deterministic demo · in memory' : scan.scope.mode === 'codex-host' ? 'Codex host approval · snapshot bridge' : 'Browser read-only preview · host handoff available'} · {scan.sources.length} config source{scan.sources.length === 1 ? '' : 's'}</span><small>Codex sees sanitized metadata only.</small></div>
+        <div className={'score-card ' + readinessClass(scan)}><div className="score-ring"><strong>{scan.readiness.value}</strong><small>/100</small></div><div><p className="kicker">READYNESS CHECK</p><h2>{scan.readiness.label === 'ready' ? 'Good to go' : scan.readiness.label === 'needs-attention' ? 'Worth a quick review' : 'Pause before the next run'}</h2><p>{scan.readiness.signals.join(' · ')}</p></div></div>
+        <div className="scope-card"><p className="kicker">WHAT WE CHECKED</p><strong>{scan.scope.root}</strong><span>{scan.scope.mode === 'demo' ? 'Safe demo · in memory' : scan.scope.mode === 'codex-host' ? 'Checked with your Codex approval' : 'Read-only browser check'} · {scan.sources.length} config source{scan.sources.length === 1 ? '' : 's'}</span><small>Codex sees a safe summary, not your raw files.</small></div>
       </section>
 
       <section className="dashboard-heading"><div><p className="kicker">AGENT-READY INVENTORY</p><h2>{showPlan ? 'Choose fixes and approve them' : 'What Codex can act on'}</h2></div><button className="plan-button" onClick={() => setShowPlan(!showPlan)}>{showPlan ? 'Back to inventory' : `Fix findings — supervised · ${plan?.items.length || 0}`}</button></section>
