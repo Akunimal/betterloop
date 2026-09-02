@@ -127,7 +127,7 @@ export default function App() {
         <h2>{scan ? scan.scope.root : 'Start with one workspace'}</h2>
         <input ref={folderInput} type="file" multiple hidden onChange={(event) => void importFolder(event.currentTarget.files)} {...({ webkitdirectory: '' } as { webkitdirectory: string })} />
         <button className="primary-button" onClick={() => void scanNow()} disabled={busy}>{busy ? 'Analyzing workspace…' : scan ? 'Rescan workspace' : 'Choose workspace folder'} <b>→</b></button>
-        <small>{scan?.scope.mode === 'codex-host' ? 'Codex is checking the workspace you approved; only the agreed summary comes back here.' : 'This first check is read-only. Nothing runs and nothing changes.'} It never looks outside the workspace you chose.</small>
+        <small>{scan?.scope.mode === 'codex-host' ? 'Codex is checking the workspace you approved; only the agreed summary comes back here.' : 'Choose the same folder that is open in Codex. This first check is read-only; nothing runs and nothing changes.'} It never looks outside the workspace you chose.</small>
       </aside>
     </section>
 
@@ -144,12 +144,12 @@ export default function App() {
 
     {!scan ? <section className="empty-state">
       <div className="empty-icon">◎</div>
-      <div><p className="kicker">ONE WORKSPACE · READ ONLY</p><h2>Start with the workspace Codex is about to use.</h2><p>MCPation only reads the setup files that matter. You and Codex see the same result; any change stays separate and needs your clear approval.</p></div>
+      <div><p className="kicker">ONE WORKSPACE · READ ONLY</p><h2>Choose the exact workspace open in Codex.</h2><p>MCPation only reads the setup files that matter. If you choose a different folder, you can still review it here, but Codex cannot apply a real fix until that same folder is open as its workspace.</p></div>
       <div className="empty-steps"><span><b>01</b> Choose workspace</span><span><b>02</b> See what needs attention</span><span><b>03</b> Decide what to do</span></div>
     </section> : <>
       <section className="readiness-row">
         <div className={'score-card ' + readinessClass(scan)}><div className="score-ring"><strong>{scan.readiness.value}</strong><small>/100</small></div><div><p className="kicker">READYNESS CHECK</p><h2>{scan.readiness.label === 'ready' ? 'Good to go' : scan.readiness.label === 'needs-attention' ? 'Worth a quick review' : 'Pause before the next run'}</h2><p>{scan.readiness.signals.join(' · ')}</p></div></div>
-        <div className="scope-card"><p className="kicker">WHAT WE CHECKED</p><strong>{scan.scope.root}</strong><span>{scan.scope.mode === 'demo' ? 'Safe demo · in memory' : scan.scope.mode === 'codex-host' ? 'Checked with your Codex approval' : 'Read-only browser check'} · {scan.sources.length} config source{scan.sources.length === 1 ? '' : 's'}</span><small>Codex sees a safe summary, not your raw files.</small></div>
+        <div className="scope-card"><p className="kicker">WHAT WE CHECKED</p><strong>{scan.scope.root}</strong><span>{scan.scope.mode === 'demo' ? 'Safe demo · in memory' : scan.scope.mode === 'codex-host' ? 'Checked with your Codex approval' : 'Read-only browser check'} · {scan.sources.length} config source{scan.sources.length === 1 ? '' : 's'}</span><small>{scan.scope.mode === 'import' ? 'To apply a real fix, open this exact folder as the Codex workspace first.' : 'Codex sees a safe summary, not your raw files.'}</small></div>
       </section>
 
       <section className="dashboard-heading"><div><p className="kicker">AGENT-READY INVENTORY</p><h2>{showPlan ? 'Choose fixes and approve them' : 'What Codex can act on'}</h2></div><button className="plan-button" onClick={() => setShowPlan(!showPlan)}>{showPlan ? 'Back to inventory' : `Fix findings — supervised · ${plan?.items.length || 0}`}</button></section>
