@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { applySupervisedFixes, buildFixPlan, getEnvironmentAccessMode, getLatestScan, getMCPationMode, registerMCPationTools, rescanConnectedEnvironment, restoreConnectedEnvironment, startImportedSession, toolNames, type ScanResult } from './mcpation'
 import './mcpation.css'
 
@@ -14,23 +14,36 @@ export default function App() {
   const [message, setMessage] = useState('Ready to audit a Codex workspace.')
   const [showPlan, setShowPlan] = useState(false)
   const [selectedFixes, setSelectedFixes] = useState<string[]>([])
+  const [baseline, setBaseline] = useState<ScanResult | null>(null)
+  const [trail, setTrail] = useState<Array<{ label: string; detail: string; state: 'done' | 'active' }>>([])
+  const [celebrating, setCelebrating] = useState(false)
   const folderInput = useRef<HTMLInputElement>(null)
+  const baselineScore = useRef<number | null>(null)
   const webmcpMode = getMCPationMode()
   const environmentMode = getEnvironmentAccessMode()
   const issues = useMemo(() => scan?.findings.filter((finding) => finding.severity !== 'healthy').length || 0, [scan])
   const plan = scan ? buildFixPlan(scan) : null
+  const record = (label: string, detail: string, state: 'done' | 'active' = 'done') => setTrail((current) => [...current.slice(-4), { label, detail, state }])
 
   useEffect(() => {
     const refresh = (event: Event) => setScan((event as CustomEvent<ScanResult>).detail || getLatestScan())
-    const handoff = () => setMessage('Codex host handoff requested. Review and approve the native filesystem capability, then return the sanitized snapshot.')
+    const handoff = () => { setMessage('Codex host handoff requested. Review and approve the native filesystem capability, then return the sanitized snapshot.'); record('Host approval requested', 'Codex must obtain the exact scoped capability before any write.', 'active') }
+    const verified = (event: Event) => {
+      const result = (event as CustomEvent<{ readiness: ScanResult['readiness']; findings: ScanResult['findings'] }>).detail
+      const improved = baselineScore.current !== null && result.readiness.value > baselineScore.current
+      record('Post-change verification complete', `${result.readiness.value}/100 · ${result.findings.filter((item) => item.severity !== 'healthy').length} remaining finding(s).`)
+      setMessage(improved ? 'Verified improvement: the approved cleanup changed the shared readiness state.' : 'Verification complete. The shared page reflects the current sanitized snapshot.')
+      if (improved) { setCelebrating(true); window.setTimeout(() => setCelebrating(false), 2600) }
+    }
     window.addEventListener('mcpation:scan', refresh)
     window.addEventListener('mcpation:handoff', handoff)
+    window.addEventListener('mcpation:verified', verified)
     void registerMCPationTools().then(() => {
       setRegistered(true)
       if (getMCPationMode() !== 'native') setMessage('Native WebMCP is unavailable in this browser. Open MCPation in ChatGPT’s in-app browser or Chrome 149+ with WebMCP enabled.')
     }).catch(() => setMessage('Open MCPation in a supported WebMCP browser.'))
     void restoreConnectedEnvironment().catch(() => undefined)
-    return () => { window.removeEventListener('mcpation:scan', refresh); window.removeEventListener('mcpation:handoff', handoff) }
+    return () => { window.removeEventListener('mcpation:scan', refresh); window.removeEventListener('mcpation:handoff', handoff); window.removeEventListener('mcpation:verified', verified) }
   }, [])
 
   const scanNow = async () => {
@@ -44,6 +57,7 @@ export default function App() {
       setScan(result)
       setShowPlan(false)
       setMessage(`Audit complete. Codex readiness: ${result.readiness.value}/100.`)
+      record('Workspace rescanned', `${result.readiness.value}/100 after the latest visible state.`)
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'The browser could not access the selected workspace.')
     } finally { setBusy(false) }
@@ -55,6 +69,9 @@ export default function App() {
     try {
       const result = await startImportedSession(files)
       setScan(result)
+      setBaseline(result)
+      baselineScore.current = result.readiness.value
+      setTrail([{ label: 'Baseline captured', detail: `${result.readiness.value}/100 · ${result.findings.filter((item) => item.severity !== 'healthy').length} finding(s) before any approved change.`, state: 'done' }])
       setShowPlan(false)
       setMessage(`Browser preview complete. Codex host handoff is available. Readiness: ${result.readiness.value}/100.`)
     } catch (error) {
@@ -77,12 +94,14 @@ export default function App() {
       setSelectedFixes([])
       setShowPlan(false)
       setMessage(getEnvironmentAccessMode() === 'demo' ? 'Demo hardening applied in memory and verified. No disk file was changed.' : 'Hardening applied. A sibling backup was created and the workspace was verified.')
+      record('Approved cleanup applied', `${selectedFixes.length} exact action(s) applied and verified in the current visible state.`)
+      if (baseline && result.readiness.value > baseline.readiness.value) { setCelebrating(true); window.setTimeout(() => setCelebrating(false), 2600) }
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'The reviewed hardening changes could not be applied.')
     } finally { setBusy(false) }
   }
 
-  return <main className="shell">
+  return <main className="shell">{celebrating && <div className="confetti" aria-label="Verified cleanup celebration">{Array.from({ length: 18 }, (_, index) => <i key={index} style={{ '--i': index } as CSSProperties} />)}</div>}
     <header className="topline">
       <div className="wordmark"><span className="mark">M</span><div><strong>MCPation</strong><small>CODEX ENVIRONMENT DOCTOR</small></div></div>
       <div className="top-actions"><div className={'webmcp-state ' + (registered ? 'ready' : '')}><i />{registered ? webmcpMode === 'native' ? `${toolNames.length} Codex tools ready` : 'Open in a WebMCP browser' : 'Loading WebMCP'}</div></div>
@@ -111,6 +130,8 @@ export default function App() {
     </section>
 
     <section className="run-state"><span className="pulse" /><strong>{message}</strong><small>{scan ? `${scan.scope.mode} · ${getMCPationMode()} WebMCP · ${scan.scope.filesConsidered} files considered` : 'No workspace has been selected'}</small></section>
+
+    {scan && <section className="audit-trail"><div><p className="kicker">VISIBLE AUDIT TRAIL</p><strong>Before → approval → verified after</strong></div><div className="trail-steps">{trail.map((item, index) => <article key={`${item.label}-${index}`} className={item.state}><b>{String(index + 1).padStart(2, '0')}</b><span><strong>{item.label}</strong><small>{item.detail}</small></span></article>)}</div></section>}
 
     {!scan ? <section className="empty-state">
       <div className="empty-icon">◎</div>
