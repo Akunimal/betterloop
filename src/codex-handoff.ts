@@ -2,8 +2,11 @@ import type { AnalysisResult, HostHandoff, WorkspaceAccessMode } from './mcp-typ
 
 export const CODEX_HOST_ALLOWLIST = [
   '.codex/config.toml',
+  '**/.codex/config.toml',
   '.mcp.json',
+  '**/.mcp.json',
   'mcp.json',
+  '**/mcp.json',
   '**/package.json',
   '**/package-lock.json',
   '**/pnpm-lock.yaml',
@@ -21,7 +24,7 @@ export const CODEX_HOST_ALLOWLIST = [
 const MAX_WORKSPACE_FILES = 240
 const MAX_WORKSPACE_DEPTH = 5
 
-function baseHandoff(operation: HostHandoff['operation'], mode: WorkspaceAccessMode | null): HostHandoff {
+function baseHandoff(operation: HostHandoff['operation'], _mode: WorkspaceAccessMode | null): HostHandoff {
   const permissionMode = operation === 'apply' ? 'write' : 'read'
   const preferredTools = operation === 'apply'
     ? ['fs/readFile', 'fs/copy', 'fs/writeFile']
@@ -42,7 +45,7 @@ function baseHandoff(operation: HostHandoff['operation'], mode: WorkspaceAccessM
       ]
   return {
     protocol: 'mcpation-codex-host/v1',
-    status: mode === 'codex-host' && operation === 'apply' ? 'approval-required' : 'approval-required',
+    status: 'approval-required',
     operation,
     scope: { root: 'current Codex workspace root', relativeAllowlist: CODEX_HOST_ALLOWLIST, maxFiles: MAX_WORKSPACE_FILES, maxDepth: MAX_WORKSPACE_DEPTH },
     permissionRequest: { mode: permissionMode, reason, nativePermissionFlow: 'Codex host approval', preferredTools },

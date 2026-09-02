@@ -1,6 +1,6 @@
 import { analyzeCodexWorkspace, type WorkspaceFile } from './codex-analysis.ts'
 import { DEMO_CONFIG_DOCUMENTS, DEMO_WORKSPACE_FILES } from './demo-workspace.ts'
-import { CODEX_CONFIG_SOURCES as SOURCES, matchCodexSourceForPath } from './mcp-paths.ts'
+import { matchCodexSourceForPath } from './mcp-paths.ts'
 import type { AnalysisResult, ApplyResult, ConfigDocument, WorkspaceAccessMode } from './mcp-types.ts'
 
 const DB_NAME = 'mcpation-files-v1'
@@ -65,28 +65,17 @@ async function directoryAt(root: FileSystemDirectoryHandle, parts: string[]): Pr
   return directory
 }
 
-async function readDocuments(root: FileSystemDirectoryHandle): Promise<ConfigDocument[]> {
-  const documents: ConfigDocument[] = []
-  for (const source of SOURCES) {
-    for (const parts of source.paths) {
-      const handle = await fileAt(root, parts)
-      if (!handle) continue
-      const file = await handle.getFile()
-      documents.push({ label: source.label, client: source.client, path: parts.join('/'), format: source.format, text: await file.text(), manualOnly: source.manualOnly })
-      break
-    }
-  }
-  return documents
-}
-
 function configDocumentsForFiles(files: WorkspaceFile[], manualOnly: boolean): ConfigDocument[] {
   const documents: ConfigDocument[] = []
   const seen = new Set<string>()
   for (const file of files) {
     const match = matchCodexSourceForPath(file.path)
-    if (!match || seen.has(match.source.label)) continue
-    seen.add(match.source.label)
-    documents.push({ label: match.source.label, client: match.source.client, path: match.path.join('/'), format: match.source.format, text: file.text, manualOnly: manualOnly || match.source.manualOnly })
+    if (!match) continue
+    const path = file.path.replace(/\\/g, '/')
+    const key = `${match.source.label}:${path.toLowerCase()}`
+    if (seen.has(key)) continue
+    seen.add(key)
+    documents.push({ label: match.source.label, client: match.source.client, path, format: match.source.format, text: file.text, manualOnly: manualOnly || match.source.manualOnly })
   }
   return documents
 }
@@ -126,9 +115,8 @@ async function permissionGranted(handle: FileSystemDirectoryHandle): Promise<boo
 }
 
 async function scanRoot(root: FileSystemDirectoryHandle): Promise<AnalysisResult> {
-  const documents = await readDocuments(root)
   const workspaceFiles = await readWorkspaceFiles(root)
-  latestAnalysis = analyzeCodexWorkspace(workspaceFiles, documents, { root: root.name, mode: 'direct', filesConsidered: workspaceFiles.length })
+  latestAnalysis = analyzeCodexWorkspace(workspaceFiles, configDocumentsForFiles(workspaceFiles, false), { root: root.name, mode: 'direct', filesConsidered: workspaceFiles.length })
   accessMode = 'direct'
   hostFiles = null
   window.dispatchEvent(new CustomEvent('mcpation:scan', { detail: latestAnalysis.scan }))
@@ -157,11 +145,16 @@ async function scanImportedFiles(files: File[]): Promise<AnalysisResult> {
 function normalizeHostSnapshot(files: WorkspaceFile[]): WorkspaceFile[] {
   if (!Array.isArray(files) || files.length === 0) throw new Error('Codex must provide at least one allowlisted workspace file.')
   if (files.length > MAX_WORKSPACE_FILES) throw new Error(`Codex host snapshot exceeds the ${MAX_WORKSPACE_FILES}-file limit.`)
+  const seen = new Set<string>()
   return files.map((file) => {
     const rawPath = typeof file?.path === 'string' ? file.path : ''
     if (!rawPath || /^(?:[A-Za-z]:[\\/]|[\\/]{1,2})/.test(rawPath)) throw new Error('Host snapshot path must be a relative path inside the Codex workspace allowlist.')
     const path = rawPath.replace(/\\/g, '/').replace(/^\/+/, '')
-    if (path.split('/').includes('..') || !isInterestingWorkspaceFile(path)) throw new Error('Host snapshot path is outside the Codex workspace allowlist.')
+    const segments = path.split('/')
+    if (segments.some((segment) => !segment || segment === '.' || segment === '..') || !isInterestingWorkspaceFile(path)) throw new Error('Host snapshot path is outside the Codex workspace allowlist.')
+    const key = path.toLowerCase()
+    if (seen.has(key)) throw new Error('Host snapshot contains a duplicate workspace path.')
+    seen.add(key)
     if (typeof file.text !== 'string' || file.text.length > MAX_WORKSPACE_FILE_BYTES) throw new Error('Host snapshot file is missing text or exceeds the bounded file-size limit.')
     return { path, text: file.text }
   })
@@ -202,7 +195,7 @@ export async function restoreEnvironmentAccess(): Promise<boolean> {
 export async function connectEnvironment(): Promise<AnalysisResult> {
   if (!fileSystemAccessSupported()) throw new Error('This browser does not expose the File System Access API.')
   rootHandle = await window.showDirectoryPicker({ id: 'mcpation-environment', mode: 'readwrite' })
-  await storeRoot(rootHandle)
+  try { await storeRoot(rootHandle) } catch { /* Private browsing may not persist handles; the current session still works. */ }
   return scanRoot(rootHandle)
 }
 
@@ -266,25 +259,29 @@ export async function applyBrowserFixes(actionIds: string[]): Promise<ApplyResul
   const skippedActionIds: string[] = []
   const backups: string[] = []
   for (const action of actions) {
-    const parts = action.path.split('/')
-    const handle = await fileAt(rootHandle, parts)
-    if (!handle) { skippedActionIds.push(action.actionId); continue }
-    const file = await handle.getFile()
-    const original = await file.text()
-    const document = JSON.parse(original) as Record<string, Record<string, unknown>>
-    if (!document[action.groupKey] || !(action.serverName in document[action.groupKey])) { skippedActionIds.push(action.actionId); continue }
-    const directory = await directoryAt(rootHandle, parts.slice(0, -1))
-    const backupName = `${parts[parts.length - 1]}.mcpation-${new Date().toISOString().replace(/[:.]/g, '-')}.bak`
-    const backup = await directory.getFileHandle(backupName, { create: true })
-    const backupWriter = await backup.createWritable()
-    await backupWriter.write(original)
-    await backupWriter.close()
-    delete document[action.groupKey][action.serverName]
-    const writer = await handle.createWritable()
-    await writer.write(`${JSON.stringify(document, null, 2)}\n`)
-    await writer.close()
-    appliedActionIds.push(action.actionId)
-    backups.push(`${parts.slice(0, -1).concat(backupName).join('/')}`)
+    try {
+      const parts = action.path.split('/')
+      const handle = await fileAt(rootHandle, parts)
+      if (!handle) { skippedActionIds.push(action.actionId); continue }
+      const file = await handle.getFile()
+      const original = await file.text()
+      const document = JSON.parse(original) as Record<string, Record<string, unknown>>
+      if (!document[action.groupKey] || !(action.serverName in document[action.groupKey])) { skippedActionIds.push(action.actionId); continue }
+      const directory = await directoryAt(rootHandle, parts.slice(0, -1))
+      const backupName = `${parts[parts.length - 1]}.mcpation-${new Date().toISOString().replace(/[:.]/g, '-')}.bak`
+      const backup = await directory.getFileHandle(backupName, { create: true })
+      const backupWriter = await backup.createWritable()
+      await backupWriter.write(original)
+      await backupWriter.close()
+      delete document[action.groupKey][action.serverName]
+      const writer = await handle.createWritable()
+      await writer.write(`${JSON.stringify(document, null, 2)}\n`)
+      await writer.close()
+      appliedActionIds.push(action.actionId)
+      backups.push(`${parts.slice(0, -1).concat(backupName).join('/')}`)
+    } catch {
+      skippedActionIds.push(action.actionId)
+    }
   }
   const result = await scanRoot(rootHandle)
   return { ...result, appliedActionIds, skippedActionIds, backups }

@@ -17,6 +17,7 @@ export default function App() {
   const [selectedFixes, setSelectedFixes] = useState<string[]>([])
   const folderInput = useRef<HTMLInputElement>(null)
   const directAccess = supportsDirectDiskAccess()
+  const webmcpMode = getMCPationMode()
   const environmentMode = getEnvironmentAccessMode()
   const issues = useMemo(() => scan?.findings.filter((finding) => finding.severity !== 'healthy').length || 0, [scan])
   const plan = scan ? buildFixPlan(scan) : null
@@ -107,7 +108,7 @@ export default function App() {
     <header className="topline">
       <div className="wordmark"><span className="mark">M</span><div><strong>MCPation</strong><small>CODEX ENVIRONMENT DOCTOR</small></div></div>
       <div className="top-actions">
-        <div className={'webmcp-state ' + (registered ? 'ready' : '')}><i />{registered ? `${toolNames.length} Codex tools ready` : 'Loading WebMCP'}</div>
+        <div className={'webmcp-state ' + (registered ? 'ready' : '')}><i />{registered ? webmcpMode === 'native' ? `${toolNames.length} Codex tools ready` : webmcpMode === 'polyfill' ? `${toolNames.length} local preview tools` : 'WebMCP unavailable' : 'Loading WebMCP'}</div>
         <button className={'live-button ' + (auditLive ? 'active' : '')} onClick={() => void toggleAudit()} disabled={busy}><span>{auditLive ? 'Ⅱ' : '▶'}</span>{auditLive ? 'Pause audit' : 'Start audit'}</button>
       </div>
     </header>

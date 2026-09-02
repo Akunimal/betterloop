@@ -64,10 +64,11 @@ function parsePythonDependencies(file: WorkspaceFile): ToolSurfaceEntry[] {
 
 function instructionEntries(files: WorkspaceFile[]): InstructionEntry[] {
   return files.flatMap((file) => {
-    const name = basename(file.path)
-    if (name !== 'AGENTS.md' && name !== 'AGENTS.override.md' && name !== 'SKILL.md') return []
+    const name = basename(file.path).toLowerCase()
+    if (name !== 'agents.md' && name !== 'agents.override.md' && name !== 'skill.md') return []
     const depth = file.path.replace(/\\/g, '/').split('/').filter(Boolean).length
-    return [{ path: file.path, kind: name as InstructionEntry['kind'], depth, label: name === 'SKILL.md' ? 'Skill manifest' : 'Instruction layer' }]
+    const kind: InstructionEntry['kind'] = name === 'skill.md' ? 'SKILL.md' : name === 'agents.override.md' ? 'AGENTS.override.md' : 'AGENTS.md'
+    return [{ path: file.path, kind, depth, label: kind === 'SKILL.md' ? 'Skill manifest' : 'Instruction layer' }]
   }).sort((left, right) => left.depth - right.depth || left.path.localeCompare(right.path))
 }
 
