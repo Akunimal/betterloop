@@ -50,7 +50,7 @@ The live app turns that fixture into a visible readiness score, a declared tool 
 
 ## Judging alignment
 
-- **WebMCP leverage:** eleven meaningful tools, precise schemas, explicit annotations, a host handoff, and a real apply/verify loop.
+- **WebMCP leverage:** twelve meaningful tools, including a deterministic workspace evidence graph, precise schemas, explicit annotations, a host handoff, and a real apply/verify loop.
 - **Execution:** hosted Vite app, responsive UI, deterministic fixture, tests, build, and verification command.
 - **Potential impact:** a specific pre-flight problem for people who use multiple MCPs and Codex instructions.
 - **Creativity and ambition:** treats an agent's tool/instruction surface as something a human can audit and harden together, rather than another passive settings page.

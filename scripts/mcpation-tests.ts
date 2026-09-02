@@ -29,7 +29,7 @@ const documents: ConfigDocument[] = [
 
 const { scan, removals } = analyzeDocuments(documents, 'test')
 
-assert.equal(scan.schemaVersion, 5)
+assert.equal(scan.schemaVersion, 6)
 assert.equal(scan.servers.length, 6)
 assert.equal(scan.host.codexShell, 'pwsh')
 assert.ok(scan.findings.some((finding) => finding.title === 'Exact duplicate: shared'))
@@ -55,6 +55,18 @@ assert.equal(enriched.artifacts.length, 5)
 assert.equal(enriched.instructionChain.length, 2)
 assert.ok(enriched.toolSurface.some((entry) => entry.kind === 'package-dependency'))
 assert.ok(enriched.toolSurface.some((entry) => entry.kind === 'configured-server'))
+assert.ok(enriched.workspaceGraph.nodes.length >= enriched.artifacts.length)
+assert.ok(enriched.workspaceGraph.edges.some((edge) => edge.relation === 'declares'))
+assert.equal(new Set(enriched.workspaceGraph.edges.map((edge) => `${edge.from}:${edge.to}:${edge.relation}`)).size, enriched.workspaceGraph.edges.length)
+assert.ok(!JSON.stringify(enriched.workspaceGraph).includes('Keep changes small'))
+
+const graphStressFiles = Array.from({ length: 260 }, (_, index) => ({
+  path: `packages/${index}/package.json`,
+  text: JSON.stringify({ dependencies: { [`@example/mcp-${index}`]: '^1.0.0' } }),
+}))
+const graphStress = analyzeCodexWorkspace(graphStressFiles, [], { root: 'stress', mode: 'demo', filesConsidered: graphStressFiles.length, platform: 'test' }).scan.workspaceGraph
+assert.ok(graphStress.nodes.length <= 180)
+assert.ok(graphStress.edges.length <= 240)
 assert.ok(enriched.readiness.value > 0)
 
 const hostScanHandoff = buildHostScanHandoff('import')
@@ -114,9 +126,10 @@ const nativeTools: any[] = []
 ;(globalThis as any).document = { modelContext: { registerTool: async (tool: any) => { nativeTools.push(tool) }, getTools: () => nativeTools } }
 const mcpation = await import('../src/mcpation.ts')
 const registeredNames = await mcpation.registerMCPationTools()
-assert.equal(registeredNames.length, 11)
+assert.equal(registeredNames.length, 12)
 assert.equal(mcpation.getMCPationMode(), 'native')
 const registeredTool = (name: string) => nativeTools.find((tool) => tool.name === name)
+assert.ok((await registeredTool('codex_get_workspace_graph').execute({})).nodes.length > 0)
 assert.equal((await registeredTool('codex_request_host_handoff').execute({ operation: 'scan' })).protocol, 'mcpation-codex-host/v1')
 const submitted = await registeredTool('codex_submit_host_snapshot').execute({ files: DEMO_WORKSPACE_FILES })
 assert.equal(submitted.scope.mode, 'codex-host')

@@ -34,6 +34,24 @@ export interface ReadinessScore {
   signals: string[]
 }
 
+export interface WorkspaceGraphNode {
+  id: string
+  label: string
+  kind: 'artifact' | 'configured-server' | 'package-signal' | 'finding'
+}
+
+export interface WorkspaceGraphEdge {
+  from: string
+  to: string
+  relation: 'declares' | 'evidence-for'
+}
+
+export interface WorkspaceGraph {
+  nodes: WorkspaceGraphNode[]
+  edges: WorkspaceGraphEdge[]
+  summary: string
+}
+
 export type WorkspaceAccessMode = 'direct' | 'import' | 'demo' | 'codex-host'
 
 export interface HostHandoff {
@@ -87,6 +105,7 @@ export interface ScanResult {
   artifacts: WorkspaceArtifact[]
   toolSurface: ToolSurfaceEntry[]
   instructionChain: InstructionEntry[]
+  workspaceGraph: WorkspaceGraph
   readiness: ReadinessScore
   hostHandoff?: HostHandoff
   privacy: string

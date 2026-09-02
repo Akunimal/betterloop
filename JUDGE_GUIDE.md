@@ -2,7 +2,7 @@
 
 ## Run the live app
 
-Open <https://mcpation.vercel.app/> in ChatGPT's in-app browser or Chrome 149+ with `chrome://flags/#enable-webmcp-testing` enabled and Chrome relaunched. The page should show **11 Codex tools ready** after registration. In Chrome, the Model Context Tool Inspector can list and manually call the same registered tools. If `document.modelContext` is unavailable, the page accurately labels itself as a local preview rather than claiming native tools are available.
+Open <https://mcpation.vercel.app/> in ChatGPT's in-app browser or Chrome 149+ with `chrome://flags/#enable-webmcp-testing` enabled and Chrome relaunched. The page should show **12 Codex tools ready** after registration. In Chrome, the Model Context Tool Inspector can list and manually call the same registered tools. If `document.modelContext` is unavailable, the page accurately labels itself as a local preview rather than claiming native tools are available.
 
 ## Validation record
 
@@ -15,7 +15,7 @@ For a deterministic run, use the repository's `demo-workspace` folder. The page 
 ```text
 Use the active MCPation WebMCP tools as a Codex pre-flight gate.
 1. Call codex_scan_workspace.
-2. Call codex_get_tool_inventory, codex_get_instruction_chain, codex_get_findings, and codex_get_access_scope.
+2. Call codex_get_tool_inventory, codex_get_instruction_chain, codex_get_workspace_graph, codex_get_findings, and codex_get_access_scope.
 3. Explain the most important finding using codex_explain_finding.
 4. Call codex_plan_hardening and summarize deterministic versus manual actions.
 5. If the page reports preview/import scope, call codex_request_host_handoff with `{"operation":"scan"}` before asking Codex to read host files.

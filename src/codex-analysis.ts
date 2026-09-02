@@ -1,5 +1,5 @@
 import { analyzeDocuments } from './mcp-analysis.ts'
-import type { AnalysisResult, ConfigDocument, Finding, InstructionEntry, ReadinessScore, ScanResult, ToolSurfaceEntry, WorkspaceArtifact, WorkspaceArtifactKind } from './mcp-types.ts'
+import type { AnalysisResult, ConfigDocument, Finding, InstructionEntry, ReadinessScore, ScanResult, ToolSurfaceEntry, WorkspaceArtifact, WorkspaceArtifactKind, WorkspaceGraph } from './mcp-types.ts'
 
 export interface WorkspaceFile { path: string; text: string }
 
@@ -83,6 +83,33 @@ function readiness(scan: ScanResult, artifacts: WorkspaceArtifact[], instruction
   return { value, label: value >= 80 ? 'ready' : value >= 55 ? 'needs-attention' : 'high-risk', signals }
 }
 
+function workspaceGraph(artifacts: WorkspaceArtifact[], toolSurface: ToolSurfaceEntry[], findings: Finding[]): WorkspaceGraph {
+  const allNodes: WorkspaceGraph['nodes'] = [
+    ...artifacts.map((artifact) => ({ id: artifact.id, label: artifact.label, kind: 'artifact' as const })),
+    ...toolSurface.map((entry) => ({ id: entry.id, label: entry.name, kind: entry.kind === 'package-dependency' ? 'package-signal' as const : 'configured-server' as const })),
+    ...findings.filter((finding) => finding.severity !== 'healthy').map((finding) => ({ id: `finding:${finding.id}`, label: finding.title, kind: 'finding' as const })),
+  ]
+  const artifactFor = (path: string) => artifacts.find((artifact) => normalized(artifact.path) === normalized(path))
+  const allEdges: WorkspaceGraph['edges'] = toolSurface.flatMap((entry) => {
+    const artifact = artifactFor(entry.declaredIn)
+    return artifact ? [{ from: artifact.id, to: entry.id, relation: 'declares' as const }] : []
+  })
+  for (const finding of findings.filter((item) => item.severity !== 'healthy')) {
+    const findingId = `finding:${finding.id}`
+    for (const entry of toolSurface) if (entry.name.length >= 3 && finding.title.toLowerCase().includes(entry.name.toLowerCase())) allEdges.push({ from: entry.id, to: findingId, relation: 'evidence-for' })
+  }
+  const nodes = allNodes.slice(0, 180)
+  const visibleNodeIds = new Set(nodes.map((node) => node.id))
+  const seenEdges = new Set<string>()
+  const edges = allEdges.filter((edge) => visibleNodeIds.has(edge.from) && visibleNodeIds.has(edge.to)).filter((edge) => {
+    const key = `${edge.from}:${edge.to}:${edge.relation}`
+    if (seenEdges.has(key)) return false
+    seenEdges.add(key)
+    return true
+  }).slice(0, 240)
+  return { nodes, edges, summary: `${nodes.length} sanitized nodes and ${edges.length} evidence links. It maps declared relationships only; it does not infer runtime execution or expose file contents.` }
+}
+
 export function analyzeCodexWorkspace(files: WorkspaceFile[], configDocuments: ConfigDocument[], options: { root?: string; mode?: ScanResult['scope']['mode']; filesConsidered?: number; platform?: string } = {}): AnalysisResult {
   const base = analyzeDocuments(configDocuments, options.platform)
   const artifacts: WorkspaceArtifact[] = files.flatMap((file) => {
@@ -104,6 +131,6 @@ export function analyzeCodexWorkspace(files: WorkspaceFile[], configDocuments: C
   const recommendations = [...base.scan.recommendations]
   if (toolSurface.some((item) => item.kind === 'package-dependency')) recommendations.push({ id: 'declared-mcp-packages', priority: 'review', category: 'coverage', title: 'Reconcile downloaded MCP packages', reason: 'The workspace declares MCP-related packages. Compare them with configured servers before removing or upgrading anything.', action: 'Review package-to-server wiring with Codex' })
   if (instructionChain.length) recommendations.push({ id: 'instruction-chain', priority: 'optional', category: 'compatibility', title: 'Keep the Codex instruction chain intentional', reason: `${instructionChain.length} instruction or skill file(s) are in scope and may affect the next agent run.`, action: 'Ask Codex to summarize precedence and remove stale guidance manually' })
-  const scan: ScanResult = { ...base.scan, schemaVersion: 5, scope: { root: options.root || 'connected folder', mode: options.mode || 'direct', filesConsidered: options.filesConsidered ?? files.length }, findings, recommendations, artifacts, toolSurface, instructionChain, readiness: readiness({ ...base.scan, findings }, artifacts, instructionChain, toolSurface), privacy: 'Analysis runs in this browser tab. Only an allowlisted set of workspace/config files is read; secrets, environment values, headers, raw instruction text, and full local paths are never returned by WebMCP tools.' }
+  const scan: ScanResult = { ...base.scan, schemaVersion: 6, scope: { root: options.root || 'connected folder', mode: options.mode || 'direct', filesConsidered: options.filesConsidered ?? files.length }, findings, recommendations, artifacts, toolSurface, instructionChain, workspaceGraph: workspaceGraph(artifacts, toolSurface, findings), readiness: readiness({ ...base.scan, findings }, artifacts, instructionChain, toolSurface), privacy: 'Analysis runs in this browser tab. Only an allowlisted set of workspace/config files is read; secrets, environment values, headers, raw instruction text, and full local paths are never returned by WebMCP tools.' }
   return { scan, removals: base.removals }
 }

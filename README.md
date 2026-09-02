@@ -20,6 +20,7 @@ The page registers these top-level `document.modelContext` tools when WebMCP is 
 - `codex_get_tool_inventory` — inspect configured MCP servers and static MCP-related package evidence.
 - `codex_get_findings` — read readiness findings and the score.
 - `codex_get_instruction_chain` — inspect ordered `AGENTS.md` and `SKILL.md` metadata without returning their text.
+- `codex_get_workspace_graph` — map sanitized evidence from workspace artifacts to declared MCP signals and current findings.
 - `codex_explain_finding` — explain one finding by its current id.
 - `codex_plan_hardening` — produce a review-only plan with deterministic and manual actions separated.
 - `codex_request_host_handoff` — return a bounded read/write handshake for Codex's native host permission flow.

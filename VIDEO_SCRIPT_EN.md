@@ -4,7 +4,7 @@ Use a public recording with audio. Keep the live app and Codex interaction visib
 
 | Time | Visual | Narration |
 | --- | --- | --- |
-| 0:00–0:12 | MCPation open; `11 Codex tools ready` badge visible. | “MCPation is a Codex Environment Doctor. It makes the next agent run ready, explainable, and safer.” |
+| 0:00–0:12 | MCPation open; `12 Codex tools ready` badge visible. | “MCPation is a Codex Environment Doctor. It makes the next agent run ready, explainable, and safer.” |
 | 0:12–0:27 | Select the `demo-workspace` folder; keep the scope card visible. | “I grant one workspace, never the whole disk. The browser reads an allowlist and never executes downloaded MCP code.” |
 | 0:27–0:47 | Codex calls `codex_scan_workspace`; readiness score appears. | “WebMCP lets Codex use the same page the person is looking at. It sees MCP configuration, package evidence, AGENTS, and skills.” |
 | 0:47–1:05 | Show declared MCP surface and findings cards. | “The filesystem server is declared twice, the docs server is disabled, the legacy endpoint is invalid, and the package manifest contains MCP dependencies.” |
@@ -17,7 +17,7 @@ Use a public recording with audio. Keep the live app and Codex interaction visib
 
 ```text
 Run MCPation as a Codex pre-flight gate for this workspace.
-Call codex_scan_workspace, codex_get_tool_inventory, codex_get_instruction_chain,
+Call codex_scan_workspace, codex_get_tool_inventory, codex_get_instruction_chain, codex_get_workspace_graph,
 codex_get_findings, and codex_get_access_scope. Explain the highest-impact finding
 without exposing secrets, raw instructions, full paths, or package contents.
 Call codex_explain_finding, then codex_plan_hardening. Do not apply anything until
