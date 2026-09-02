@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
-import { applySupervisedFixes, buildFixPlan, getEnvironmentAccessMode, getLatestScan, getMCPationMode, registerMCPationTools, rescanConnectedEnvironment, restoreConnectedEnvironment, startImportedSession, toolNames, type ScanResult } from './mcpation'
+import { applySupervisedFixes, buildFixPlan, getEnvironmentAccessMode, getLatestScan, getMCPationMode, registerMCPationTools, requestHostHandoff, rescanConnectedEnvironment, restoreConnectedEnvironment, startImportedSession, toolNames, type ScanResult } from './mcpation'
 import './mcpation.css'
 
 function readinessClass(scan: ScanResult | null): string {
@@ -17,6 +17,7 @@ export default function App() {
   const [baseline, setBaseline] = useState<ScanResult | null>(null)
   const [trail, setTrail] = useState<Array<{ label: string; detail: string; state: 'done' | 'active' }>>([])
   const [celebrating, setCelebrating] = useState(false)
+  const [handoffReady, setHandoffReady] = useState(false)
   const folderInput = useRef<HTMLInputElement>(null)
   const baselineScore = useRef<number | null>(null)
   const webmcpMode = getMCPationMode()
@@ -84,6 +85,14 @@ export default function App() {
 
   const toggleFix = (id: string) => setSelectedFixes((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id])
 
+  const stageHostHandoff = () => {
+    if (!selectedFixes.length) return
+    requestHostHandoff('apply', selectedFixes)
+    setHandoffReady(true)
+    record('Approved cleanup staged', `${selectedFixes.length} exact action(s) are ready for Codex's scoped write approval.`)
+    setMessage('Approval handoff ready. Let Codex request the scoped write capability, make the backup, then submit the refreshed snapshot here.')
+  }
+
   const applyFixes = async () => {
     if (!selectedFixes.length || !['direct', 'demo'].includes(getEnvironmentAccessMode() || '')) return
     if (!window.confirm(`Back up and apply ${selectedFixes.length} reviewed hardening change${selectedFixes.length === 1 ? '' : 's'}?`)) return
@@ -143,12 +152,13 @@ export default function App() {
         <div className="scope-card"><p className="kicker">WHAT IS IN SCOPE</p><strong>{scan.scope.root}</strong><span>{scan.scope.mode === 'demo' ? 'Deterministic demo · in memory' : scan.scope.mode === 'codex-host' ? 'Codex host approval · snapshot bridge' : 'Browser read-only preview · host handoff available'} · {scan.sources.length} config source{scan.sources.length === 1 ? '' : 's'}</span><small>Codex sees sanitized metadata only.</small></div>
       </section>
 
-      <section className="dashboard-heading"><div><p className="kicker">AGENT-READY INVENTORY</p><h2>{showPlan ? 'Supervised hardening' : 'What Codex can act on'}</h2></div><button className="plan-button" onClick={() => setShowPlan(!showPlan)}>{showPlan ? 'Back to inventory' : `Review hardening · ${plan?.items.length || 0}`}</button></section>
+      <section className="dashboard-heading"><div><p className="kicker">AGENT-READY INVENTORY</p><h2>{showPlan ? 'Choose fixes and approve them' : 'What Codex can act on'}</h2></div><button className="plan-button" onClick={() => setShowPlan(!showPlan)}>{showPlan ? 'Back to inventory' : `Fix findings — supervised · ${plan?.items.length || 0}`}</button></section>
 
       {showPlan ? <section className="fix-plan">
         <div className="plan-intro"><strong>Every write is explicit.</strong><span>Only deterministic JSON duplicate cleanup can be applied. Commands, TOML, policy, and instruction changes remain manual. If the page is read-only, Codex can request the host handoff for this exact plan.</span></div>
         {plan?.items.length ? plan.items.map((item) => <article key={item.id}><span className={item.canApply ? 'apply-label' : 'manual-label'}>{item.canApply ? 'BACKUP + REVIEW' : 'MANUAL REVIEW'}</span><b>{item.title}</b><p>{item.detail}</p>{item.canApply && <label className="fix-choice"><input type="checkbox" checked={selectedFixes.includes(item.id)} onChange={() => toggleFix(item.id)} /> Include this exact change</label>}</article>) : <div className="plan-empty">No hardening action proposed for this workspace.</div>}
-        <div className="fix-plan-actions"><small>{environmentMode === 'demo' ? 'Demo mode changes memory only; no disk file is touched.' : environmentMode === 'codex-host' ? 'Codex must request native write approval, then use the host handoff and submit a fresh snapshot.' : 'Ask Codex to call codex_request_host_handoff with operation apply; the page never writes selected workspace files.'}</small><button disabled={!selectedFixes.length || busy || environmentMode !== 'demo'} onClick={() => void applyFixes()}>{environmentMode === 'demo' ? 'Apply demo change' : 'Use Codex host handoff'} {selectedFixes.length || ''}</button></div>
+        {handoffReady && environmentMode !== 'demo' && <div className="handoff-ready"><strong>Approval handoff is ready.</strong><span>Codex now requests write access only for your selected action, creates the backup, applies it, and sends the refreshed snapshot back for verification.</span></div>}
+        <div className="fix-plan-actions"><small>{environmentMode === 'demo' ? 'Demo mode changes memory only; no disk file is touched.' : 'Choose exact fixes, then request Codex approval. The page cannot silently write your workspace.'}</small><button disabled={!selectedFixes.length || busy} onClick={() => environmentMode === 'demo' ? void applyFixes() : stageHostHandoff()}>{environmentMode === 'demo' ? 'Apply demo change' : 'Request Codex approval'} {selectedFixes.length || ''}</button></div>
       </section> : <section className="dashboard-grid">
         <div className="panel inventory-panel"><div className="panel-title"><strong>Declared MCP surface</strong><span>{scan.toolSurface.length}</span></div><p className="panel-note">Configured servers and package evidence. Static declarations are not live runtime proof.</p><div className="inventory">{scan.toolSurface.length ? scan.toolSurface.map((entry) => <article key={entry.id}><div><strong>{entry.name}</strong><small>{entry.kind.replace('-', ' ')} · {entry.confidence} confidence</small></div><div className="server-meta"><span>{entry.source}</span><small>{entry.target || entry.declaredIn}</small></div></article>) : <div className="all-clear"><b>No MCP signal found.</b><span>Connect a project with a Codex config or MCP package manifest.</span></div>}</div></div>
         <div className="panel findings-panel"><div className="panel-title"><strong>Readiness findings</strong><span>{issues}</span></div><div className="findings">{scan.findings.map((finding) => <article key={finding.id} className={finding.severity}><span>{finding.severity}</span><strong>{finding.title}</strong><p>{finding.detail}</p></article>)}</div></div>
