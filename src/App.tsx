@@ -42,7 +42,7 @@ export default function App() {
     window.addEventListener('mcpation:verified', verified)
     void registerMCPationTools().then(() => {
       setRegistered(true)
-      if (getMCPationMode() !== 'native') setMessage('Native WebMCP is unavailable in this browser. Open MCPation in ChatGPT’s in-app browser or Chrome 149+ with WebMCP enabled.')
+      if (getMCPationMode() !== 'native') setMessage(nativeFolderMode ? 'WebMCP is off in Chrome. Enable chrome://flags/#enable-webmcp-testing, relaunch Chrome, and reopen MCPation.' : 'Native WebMCP is unavailable in this browser. Open MCPation in ChatGPT’s in-app browser or Chrome 149+ with WebMCP enabled.')
     }).catch(() => setMessage('Open MCPation in a supported WebMCP browser.'))
     void restoreConnectedEnvironment().catch(() => undefined)
     return () => { window.removeEventListener('mcpation:scan', refresh); window.removeEventListener('mcpation:handoff', handoff); window.removeEventListener('mcpation:verified', verified) }
@@ -130,7 +130,7 @@ export default function App() {
   return <main className="shell">{celebrating && <div className="confetti" aria-label="Verified cleanup celebration">{Array.from({ length: 18 }, (_, index) => <i key={index} style={{ '--i': index } as CSSProperties} />)}</div>}
     <header className="topline">
       <div className="wordmark"><span className="mark">M</span><div><strong>MCPation</strong><small>CODEX ENVIRONMENT DOCTOR</small></div></div>
-      <div className="top-actions"><div className={'webmcp-state ' + (registered ? 'ready' : '')}><i />{registered ? webmcpMode === 'native' ? `${toolNames.length} Codex tools ready` : 'Open in a WebMCP browser' : 'Loading WebMCP'}</div></div>
+      <div className="top-actions"><div className={'webmcp-state ' + (registered ? 'ready' : '')}><i />{registered ? webmcpMode === 'native' ? `${toolNames.length} Codex tools ready` : nativeFolderMode ? 'Enable Chrome WebMCP flag' : 'Open in a WebMCP browser' : 'Loading WebMCP'}</div></div>
     </header>
 
     <section className="hero">
