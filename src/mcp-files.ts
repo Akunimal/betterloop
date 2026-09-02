@@ -98,6 +98,14 @@ async function writeBackupManifest(directory: FileSystemDirectoryHandle, entries
   await writer.close()
 }
 
+function legacyBackupEntry(name: string): BackupEntry | null {
+  const match = /^(\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d{3}Z)-(.+)\.bak$/.exec(name)
+  if (!match) return null
+  const path = match[2].replace(/--/g, '/')
+  if (!isSafeWorkspacePath(path)) return null
+  return { id: name, path, actionId: `legacy-${path.replace(/[^a-zA-Z0-9_-]/g, '_')}`, createdAt: '' }
+}
+
 async function createWorkspaceBackup(root: FileSystemDirectoryHandle, path: string, original: string, actionId: string, tag = ''): Promise<string> {
   const directory = await root.getDirectoryHandle('.mcpation-backups', { create: true })
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
@@ -266,35 +274,33 @@ export async function listBrowserBackups(): Promise<BackupEntry[]> {
   let directory: FileSystemDirectoryHandle
   try { directory = await rootHandle.getDirectoryHandle('.mcpation-backups') } catch { return [] }
 
+  const existing: BackupEntry[] = []
   const manifest = await readBackupManifest(directory)
-  if (manifest.length) {
-    const existing: BackupEntry[] = []
-    for (const entry of manifest) {
-      try {
-        const handle = await directory.getFileHandle(entry.id)
-        const file = await handle.getFile()
-        existing.push({ ...entry, createdAt: entry.createdAt || (Number.isFinite(file.lastModified) ? new Date(file.lastModified).toISOString() : '') })
-      } catch { /* stale manifest records are ignored */ }
-    }
-    return existing.sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id))
+  for (const entry of manifest) {
+    try {
+      const handle = await directory.getFileHandle(entry.id)
+      const file = await handle.getFile()
+      existing.push({ ...entry, createdAt: entry.createdAt || (Number.isFinite(file.lastModified) ? new Date(file.lastModified).toISOString() : '') })
+    } catch { /* stale manifest records are ignored */ }
   }
-
-  // Older backups predate the manifest. Keep them discoverable while this
-  // workspace is still showing the action paths from the current scan.
+  const knownIds = new Set(existing.map((entry) => entry.id))
+  // Older backups predate the manifest. Keep them discoverable even after the
+  // current scan has no remaining removal action for their original file.
   const actions = latestAnalysis?.removals || []
-  const discovered: BackupEntry[] = []
   for await (const entry of directory.values()) {
-    if (entry.kind !== 'file' || entry.name === BACKUP_MANIFEST || entry.name.startsWith('restore-')) continue
+    if (entry.kind !== 'file' || knownIds.has(entry.name) || entry.name === BACKUP_MANIFEST || entry.name.startsWith('restore-')) continue
     const action = actions.find((item) => entry.name.endsWith(backupPathSuffix(item.path)))
-    if (!action) continue
+    const legacy = legacyBackupEntry(entry.name)
+    const backup = action ? { id: entry.name, path: action.path, actionId: action.actionId, createdAt: '' } : legacy
+    if (!backup) continue
     let createdAt = ''
     try {
       const file = await (entry as FileSystemFileHandle).getFile()
       createdAt = Number.isFinite(file.lastModified) ? new Date(file.lastModified).toISOString() : ''
     } catch { /* metadata is optional */ }
-    discovered.push({ id: entry.name, path: action.path, actionId: action.actionId, createdAt })
+    existing.push({ ...backup, createdAt: backup.createdAt || createdAt })
   }
-  return discovered.sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id))
+  return existing.sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id))
 }
 
 export async function restoreBrowserBackup(backupId: string): Promise<RestoreResult> {

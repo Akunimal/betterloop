@@ -177,6 +177,8 @@ assert.equal(restored.restoredPath, '.mcp.json')
 assert.ok(restored.safetyBackup.startsWith('.mcpation-backups/restore-'))
 assert.equal(Object.keys(JSON.parse(browserMcp.text()).mcpServers).length, 2)
 assert.equal((await listBrowserBackups()).length, 1)
+browserBackups.entries.set('2026-09-02T15-44-33-209Z-.mcp.json.bak', new MemoryFile('2026-09-02T15-44-33-209Z-.mcp.json.bak', browserMcp.text()))
+assert.equal((await listBrowserBackups()).length, 2)
 delete (globalThis as any).window
 
 assert.deepEqual(parseCleanupToolInput({ actionIds: ['remove-one', 'remove-one'], confirm: true }), ['remove-one'])
