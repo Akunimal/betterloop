@@ -11,6 +11,7 @@ function stableId(value: string): string {
 
 function normalized(path: string): string { return path.replace(/\\/g, '/').replace(/^\/+/, '').toLowerCase() }
 function basename(path: string): string { return path.replace(/\\/g, '/').split('/').pop() || path }
+function parent(path: string): string { const parts = path.replace(/\\/g, '/').split('/'); parts.pop(); return parts.join('/').toLowerCase() }
 function artifactKind(path: string): WorkspaceArtifactKind | null {
   const value = normalized(path)
   const name = basename(value)
@@ -112,7 +113,7 @@ function workspaceGraph(artifacts: WorkspaceArtifact[], toolSurface: ToolSurface
 
 export function analyzeCodexWorkspace(files: WorkspaceFile[], configDocuments: ConfigDocument[], options: { root?: string; mode?: ScanResult['scope']['mode']; filesConsidered?: number; platform?: string } = {}): AnalysisResult {
   const base = analyzeDocuments(configDocuments, options.platform)
-  const artifacts: WorkspaceArtifact[] = files.flatMap((file) => {
+  const discoveredArtifacts: WorkspaceArtifact[] = files.flatMap((file) => {
     const kind = artifactKind(file.path)
     return kind ? [{ id: `artifact:${stableId(file.path)}`, path: file.path, kind, label: basename(file.path), detail: summarizeArtifact(kind, file.path, file.text) }] : []
   })
@@ -125,6 +126,13 @@ export function analyzeCodexWorkspace(files: WorkspaceFile[], configDocuments: C
     ...files.flatMap(parsePackageDependencies),
     ...files.flatMap(parsePythonDependencies),
   ]
+  const mcpPackagePaths = new Set(toolSurface.filter((item) => item.kind === 'package-dependency').map((item) => normalized(item.declaredIn)))
+  const mcpPackageDirectories = new Set([...mcpPackagePaths].map(parent))
+  const artifacts = discoveredArtifacts.filter((artifact) => {
+    if (artifact.kind === 'package-manifest') return mcpPackagePaths.has(normalized(artifact.path))
+    if (artifact.kind === 'lockfile') return mcpPackageDirectories.has(parent(artifact.path))
+    return true
+  })
   const findings: Finding[] = [...base.scan.findings]
   if (!artifacts.some((item) => item.kind === 'codex-config')) findings.push({ id: 'codex-config-missing', severity: 'review', title: 'Codex config is outside this scope', detail: 'Select the folder containing .codex/config.toml when you want to audit global Codex MCP settings.' })
   if (instructionChain.length === 0) findings.push({ id: 'instruction-chain-empty', severity: 'attention', title: 'No Codex instruction layer found', detail: 'Add or select a workspace containing AGENTS.md or a Codex skill when you want the audit to include agent guidance.' })
