@@ -102,7 +102,13 @@ export function analyzeDocuments(documents: ConfigDocument[], platform = typeof 
     for (const duplicate of duplicates) {
       const actionId = `remove-${duplicate.id}`
       const canApply = duplicate.format === 'json' && duplicate.strictJson && !duplicate.manualOnly && Boolean(duplicate.groupKey)
-      proposals.push({ id: actionId, title: `Remove duplicate ${duplicate.name} from ${duplicate.source}`, detail: `Keeps the identical definition in ${keep.source}. A sibling backup file is created first.`, kind: canApply ? 'remove-json-entry' : 'manual-review', canApply })
+      proposals.push({
+        id: actionId,
+        title: `Remove duplicate ${duplicate.name} from ${duplicate.path}`,
+        detail: `Deletes only the mcpServers.${duplicate.name} key in ${duplicate.path}. The canonical ${keep.name} definition in ${keep.path} stays active; MCPation backs up the JSON file first and leaves TOML, commands, and other findings untouched.`,
+        kind: canApply ? 'remove-json-entry' : 'manual-review',
+        canApply,
+      })
       if (canApply) removals.push({ actionId, path: duplicate.path, groupKey: duplicate.groupKey, serverName: duplicate.name })
     }
   }
