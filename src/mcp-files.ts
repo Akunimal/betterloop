@@ -59,6 +59,14 @@ async function fileAt(root: FileSystemDirectoryHandle, parts: string[]): Promise
   } catch { return null }
 }
 
+function isSafeWorkspacePath(path: string): boolean {
+  const normalized = path.replace(/\\/g, '/')
+  const segments = normalized.split('/')
+  return Boolean(normalized && !normalized.startsWith('/') && !/^[A-Za-z]:/.test(normalized)
+    && segments.every((segment) => Boolean(segment) && segment !== '.' && segment !== '..')
+    && isInterestingWorkspaceFile(normalized))
+}
+
 const BACKUP_MANIFEST = 'index.json'
 
 function backupPathSuffix(path: string): string {
@@ -77,7 +85,8 @@ async function readBackupManifest(directory: FileSystemDirectoryHandle): Promise
     if (!Array.isArray(parsed)) return []
     return parsed.filter((entry): entry is BackupEntry => Boolean(
       entry && typeof entry.id === 'string' && /^[^/\\.][^/\\]*$/.test(entry.id) && entry.id !== BACKUP_MANIFEST
-      && typeof entry.path === 'string' && typeof entry.actionId === 'string' && typeof entry.createdAt === 'string',
+      && typeof entry.path === 'string' && isSafeWorkspacePath(entry.path)
+      && typeof entry.actionId === 'string' && typeof entry.createdAt === 'string',
     ))
   } catch { return [] }
 }
@@ -295,7 +304,7 @@ export async function restoreBrowserBackup(backupId: string): Promise<RestoreRes
   if (!rootHandle || (await rootHandle.requestPermission({ mode: 'readwrite' })) !== 'granted') throw new Error('Write permission was not granted. Nothing was changed.')
   const entries = await listBrowserBackups()
   const entry = entries.find((item) => item.id === backupId)
-  if (!entry) throw new Error('That backup is no longer available in the selected workspace.')
+  if (!entry || !isSafeWorkspacePath(entry.path)) throw new Error('That backup is no longer available in the selected workspace.')
   const directory = await rootHandle.getDirectoryHandle('.mcpation-backups')
   const backup = await directory.getFileHandle(entry.id)
   const backupFile = await backup.getFile()
