@@ -17,6 +17,7 @@ export default function App() {
   const [baseline, setBaseline] = useState<ScanResult | null>(null)
   const [trail, setTrail] = useState<Array<{ label: string; detail: string; state: 'done' | 'active' }>>([])
   const [celebrating, setCelebrating] = useState(false)
+  const [useImportFallback, setUseImportFallback] = useState(false)
   const folderInput = useRef<HTMLInputElement>(null)
   const baselineScore = useRef<number | null>(null)
   const webmcpMode = getMCPationMode()
@@ -48,7 +49,7 @@ export default function App() {
 
   const scanNow = async () => {
     if (!scan) {
-      if (supportsDirectDiskAccess()) {
+      if (supportsDirectDiskAccess() && !useImportFallback) {
         setBusy(true)
         try {
           const result = await startConsentSession()
@@ -57,7 +58,12 @@ export default function App() {
           baselineScore.current = result.readiness.value
           setTrail([{ label: 'Starting point saved', detail: `${result.readiness.value}/100 · ${result.findings.filter((item) => item.severity !== 'healthy').length} thing(s) to review before any change.`, state: 'done' }])
           setMessage(`Workspace checked. Codex can now help you review the next step. Readiness: ${result.readiness.value}/100.`)
-        } catch (error) { setMessage(error instanceof Error ? error.message : 'The browser could not read the selected workspace.') } finally { setBusy(false) }
+        } catch (error) {
+          if (error instanceof DOMException && error.name === 'AbortError') {
+            setUseImportFallback(true)
+            setMessage('This embedded browser did not return a usable folder handle. Click Choose workspace folder once more to import it read-only; Chrome supports the complete browser apply flow.')
+          } else setMessage(error instanceof Error ? error.message : 'The browser could not read the selected workspace.')
+        } finally { setBusy(false) }
         return
       }
       folderInput.current?.click()
