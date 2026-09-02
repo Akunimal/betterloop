@@ -32,7 +32,7 @@ WebMCP does not replace every installed MCP. It makes a complementary class of e
 
 ## Safety and scope
 
-The user selects a workspace folder; MCPation never claims whole-system access. Discovery is allowlisted and bounded. A supported write requires the user's exact selection and confirmation in the visible plan, never a second folder selection. Originals go to `.mcpation-backups/`, which MCPation adds to an existing `.gitignore` when needed. Downloaded MCP code is not executed. Package manifests are static evidence, not proof of live tools. WebMCP results omit secrets, environment values, headers, raw instructions, and full local paths. Ambiguous commands, TOML edits, policy changes, and instruction rewrites remain manual.
+The user selects a workspace folder; MCPation never claims whole-system access. Discovery is allowlisted and bounded. A supported write requires the user's exact selection and confirmation in the visible plan, never a second folder selection. Originals go to `.mcpation-backups/`, which MCPation adds to an existing `.gitignore` when needed. Chrome exposes those originals in a visible restore history and saves the current file again before any restore, so the cleanup remains reversible. Downloaded MCP code is not executed. Package manifests are static evidence, not proof of live tools. WebMCP results omit secrets, environment values, headers, raw instructions, and full local paths. Ambiguous commands, TOML edits, policy changes, and instruction rewrites remain manual.
 
 ## Demo story
 
@@ -44,13 +44,13 @@ The repository contains `demo-workspace`, a safe fixture with:
 - MCP package dependencies in `package.json`;
 - `AGENTS.md` and a Codex `SKILL.md`.
 
-The live app turns that fixture into a visible readiness score, a declared tool inventory, evidence cards, and a supervised duplicate-cleanup plan. The initial browser selection is read-only; after the user checks the exact JSON action, the browser escalates write access for that same selected folder. MCPation backs up, applies, and rescans; Codex then verifies the same page state.
+The live app turns that fixture into a visible readiness score, a declared tool inventory, evidence cards, and a supervised duplicate-cleanup plan. The initial browser selection is read-only; after the user checks the exact JSON action, the browser escalates write access for that same selected folder. MCPation backs up, applies, rescans, and leaves a one-click restore path; Codex then verifies the same page state.
 
 ## Implementation notes
 
 - React + Vite + TypeScript.
 - `src/codex-analysis.ts` enriches deterministic MCP parsing with workspace artifact, package, instruction-chain, and readiness analysis.
-- `src/mcp-files.ts` owns native browser permission, bounded discovery, import fallback, backups, writes, and rescans.
+- `src/mcp-files.ts` owns native browser permission, bounded discovery, import fallback, backups, writes, restore safety copies, and rescans.
 - `src/mcpation.ts` registers the WebMCP surface and validates tool arguments.
 - `scripts/mcpation-tests.ts` covers parsing, redaction, package/instruction discovery, readiness, and write-input validation.
 

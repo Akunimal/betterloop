@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { analyzeCodexWorkspace } from '../src/codex-analysis.ts'
-import { applyBrowserFixes, connectEnvironment, grantWriteAccessToConnectedEnvironment, ingestHostSnapshot, startDemoEnvironment } from '../src/mcp-files.ts'
+import { applyBrowserFixes, connectEnvironment, grantWriteAccessToConnectedEnvironment, ingestHostSnapshot, listBrowserBackups, restoreBrowserBackup, startDemoEnvironment } from '../src/mcp-files.ts'
 import { analyzeDocuments } from '../src/mcp-analysis.ts'
 import { parseCleanupToolInput, parseHostHandoffInput, parseHostSnapshotInput } from '../src/mcp-tool-input.ts'
 import { matchSourceForPath } from '../src/mcp-paths.ts'
@@ -169,6 +169,14 @@ const browserBackups = browserRoot.entries.get('.mcpation-backups') as MemoryDir
 assert.ok(browserBackups)
 assert.ok([...browserBackups.entries.keys()].some((name) => /^.*-\.mcp\.json\.bak$/.test(name)))
 assert.match(browserGitignore.text(), /\.mcpation-backups\//)
+const listedBackups = await listBrowserBackups()
+assert.equal(listedBackups.length, 1)
+assert.equal(listedBackups[0].path, '.mcp.json')
+const restored = await restoreBrowserBackup(listedBackups[0].id)
+assert.equal(restored.restoredPath, '.mcp.json')
+assert.ok(restored.safetyBackup.startsWith('.mcpation-backups/restore-'))
+assert.equal(Object.keys(JSON.parse(browserMcp.text()).mcpServers).length, 2)
+assert.equal((await listBrowserBackups()).length, 1)
 delete (globalThis as any).window
 
 assert.deepEqual(parseCleanupToolInput({ actionIds: ['remove-one', 'remove-one'], confirm: true }), ['remove-one'])

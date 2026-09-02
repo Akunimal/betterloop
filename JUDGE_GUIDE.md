@@ -8,7 +8,7 @@ Open <https://mcpation.vercel.app/> in ChatGPT's in-app browser or Chrome 149+ w
 
 The submission's primary demo environment is Codex's in-app browser. Record the public video and primary end-to-end test there; Chrome support uses the same native `document.modelContext.registerTool` implementation and the deployment sends the WebMCP-required origin-isolation and same-origin `tools` permission-policy headers. This distinction is intentional: MCPation never represents a local fallback preview as a native WebMCP test.
 
-For a deterministic run, use the repository's `demo-workspace` folder. Codex's embedded browser uses the stable read-only import for analysis, then can execute the exact host handoff when that folder is the current Codex workspace. Chrome `?browser=chrome` uses one native folder picker for a direct browser apply. It saves originals in `.mcpation-backups/` and adds that directory to an existing `.gitignore` when needed. It does not ask for a token, install, extension, or local service.
+For a deterministic run, use the repository's `demo-workspace` folder. Codex's embedded browser uses the stable read-only import for analysis, then can execute the exact host handoff when that folder is the current Codex workspace. Chrome `?browser=chrome` uses one native folder picker for a direct browser apply. It saves originals in `.mcpation-backups/`, adds that directory to an existing `.gitignore` when needed, and shows a restore history after the first approved write. It does not ask for a token, install, extension, or local service.
 
 ## Suggested Codex prompt
 
@@ -37,7 +37,7 @@ The dashboard should show a readiness score below 100, a declared surface with b
 
 ## Browser-approved apply path
 
-After the plan returns an exact deterministic action id, the person selects it in MCPation and clicks **Request Codex approval**. Codex executes the bounded host handoff in its already approved current workspace, creates the backup, changes only the listed JSON key, submits an allowlisted snapshot, and calls `codex_verify_workspace`. Chrome `?browser=chrome` provides the direct one-picker browser apply alternative.
+After the plan returns an exact deterministic action id, the person selects it in MCPation and clicks **Request Codex approval**. Codex executes the bounded host handoff in its already approved current workspace, creates the backup, changes only the listed JSON key, submits an allowlisted snapshot, and calls `codex_verify_workspace`. Chrome `?browser=chrome` provides the direct one-picker browser apply alternative and a visible restore button that saves a safety copy before rewinding a selected backup.
 
 ## Browser preview and write path
 

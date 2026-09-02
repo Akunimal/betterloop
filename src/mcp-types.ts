@@ -127,4 +127,16 @@ export interface ApplyResult {
   skippedActionIds: string[]
   backups: string[]
 }
+export interface BackupEntry {
+  id: string
+  path: string
+  actionId: string
+  createdAt: string
+}
+export interface RestoreResult {
+  scan: ScanResult
+  restoredPath: string
+  source: string
+  safetyBackup: string
+}
 export interface AnalysisResult { scan: ScanResult; removals: RemovalAction[] }

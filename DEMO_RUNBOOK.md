@@ -37,4 +37,4 @@ I will approve supported cleanup in MCPation's browser folder-permission dialog.
 - Do not show personal folders, tokens, environment values, raw instruction text, or terminal output.
 - Keep the visible scope card in frame when discussing permissions.
 - Do not claim that static package evidence is a live runtime tool list.
-- The folder is selected once. Keep the browser permission prompt and `.mcpation-backups/` result in frame.
+- The folder is selected once. Keep the browser permission prompt, `.mcpation-backups/` result, and (if time allows) the visible restore history in frame.

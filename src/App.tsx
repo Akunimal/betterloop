@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
-import { approveAndApplyBrowserFixes, applySupervisedFixes, buildFixPlan, getEnvironmentAccessMode, getLatestScan, getMCPationMode, registerMCPationTools, requestHostHandoff, rescanConnectedEnvironment, restoreConnectedEnvironment, startConsentSession, startImportedSession, supportsDirectDiskAccess, toolNames, type ScanResult } from './mcpation'
+import confetti from 'canvas-confetti'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { approveAndApplyBrowserFixes, applySupervisedFixes, buildFixPlan, getEnvironmentAccessMode, getLatestScan, getMCPationMode, listBackups, registerMCPationTools, requestHostHandoff, rescanConnectedEnvironment, restoreBackup, restoreConnectedEnvironment, startConsentSession, startImportedSession, supportsDirectDiskAccess, toolNames, type BackupEntry, type ScanResult } from './mcpation'
 import './mcpation.css'
 
 function readinessClass(scan: ScanResult | null): string {
@@ -16,7 +17,7 @@ export default function App() {
   const [selectedFixes, setSelectedFixes] = useState<string[]>([])
   const [baseline, setBaseline] = useState<ScanResult | null>(null)
   const [trail, setTrail] = useState<Array<{ label: string; detail: string; state: 'done' | 'active' }>>([])
-  const [celebrating, setCelebrating] = useState(false)
+  const [backups, setBackups] = useState<BackupEntry[]>([])
   const [useImportFallback, setUseImportFallback] = useState(false)
   const folderInput = useRef<HTMLInputElement>(null)
   const baselineScore = useRef<number | null>(null)
@@ -26,16 +27,24 @@ export default function App() {
   const issues = useMemo(() => scan?.findings.filter((finding) => finding.severity !== 'healthy').length || 0, [scan])
   const plan = scan ? buildFixPlan(scan) : null
   const record = (label: string, detail: string, state: 'done' | 'active' = 'done') => setTrail((current) => [...current.slice(-4), { label, detail, state }])
+  const refreshBackups = async () => {
+    try { setBackups(await listBackups()) } catch { setBackups([]) }
+  }
+  const celebrate = () => {
+    const options = { particleCount: 85, spread: 78, startVelocity: 34, gravity: 0.82, ticks: 175, scalar: 0.92, colors: ['#62e9df', '#c7a5ff', '#ffd37b', '#ff8c9d'], disableForReducedMotion: true }
+    void confetti({ ...options, angle: 64, origin: { x: 0.13, y: 0.7 } })
+    void confetti({ ...options, angle: 116, origin: { x: 0.87, y: 0.7 } })
+  }
 
   useEffect(() => {
-    const refresh = (event: Event) => setScan((event as CustomEvent<ScanResult>).detail || getLatestScan())
+    const refresh = (event: Event) => { setScan((event as CustomEvent<ScanResult>).detail || getLatestScan()); void refreshBackups() }
     const handoff = () => { setMessage('Codex is ready to ask for your approval before it changes anything.'); record('Waiting for your approval', 'Codex needs permission only for the exact change you selected.', 'active') }
     const verified = (event: Event) => {
       const result = (event as CustomEvent<{ readiness: ScanResult['readiness']; findings: ScanResult['findings'] }>).detail
       const improved = baselineScore.current !== null && result.readiness.value > baselineScore.current
       record('Post-change verification complete', `${result.readiness.value}/100 · ${result.findings.filter((item) => item.severity !== 'healthy').length} remaining finding(s).`)
       setMessage(improved ? 'Nice — the approved cleanup worked, and the workspace is now in a better state.' : 'Verification complete. This page now reflects the workspace Codex checked.')
-      if (improved) { setCelebrating(true); window.setTimeout(() => setCelebrating(false), 2600) }
+      if (improved) celebrate()
     }
     window.addEventListener('mcpation:scan', refresh)
     window.addEventListener('mcpation:handoff', handoff)
@@ -44,7 +53,7 @@ export default function App() {
       setRegistered(true)
       if (getMCPationMode() !== 'native') setMessage(nativeFolderMode ? 'WebMCP is off in Chrome. Enable chrome://flags/#enable-webmcp-testing, relaunch Chrome, and reopen MCPation.' : 'Native WebMCP is unavailable in this browser. Open MCPation in ChatGPT’s in-app browser or Chrome 149+ with WebMCP enabled.')
     }).catch(() => setMessage('Open MCPation in a supported WebMCP browser.'))
-    void restoreConnectedEnvironment().catch(() => undefined)
+    void restoreConnectedEnvironment().then(() => refreshBackups()).catch(() => undefined)
     return () => { window.removeEventListener('mcpation:scan', refresh); window.removeEventListener('mcpation:handoff', handoff); window.removeEventListener('mcpation:verified', verified) }
   }, [])
 
@@ -59,6 +68,7 @@ export default function App() {
           baselineScore.current = result.readiness.value
           setTrail([{ label: 'Starting point saved', detail: `${result.readiness.value}/100 · ${result.findings.filter((item) => item.severity !== 'healthy').length} thing(s) to review before any change.`, state: 'done' }])
           setMessage(`Workspace checked. Codex can now help you review the next step. Readiness: ${result.readiness.value}/100.`)
+          await refreshBackups()
         } catch (error) {
           if (error instanceof DOMException && error.name === 'AbortError') {
             setUseImportFallback(true)
@@ -77,6 +87,7 @@ export default function App() {
       setShowPlan(false)
       setMessage(`Check complete. Codex readiness is ${result.readiness.value}/100.`)
       record('Workspace checked again', `${result.readiness.value}/100 based on the latest visible state.`)
+      await refreshBackups()
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'The browser could not access the selected workspace.')
     } finally { setBusy(false) }
@@ -93,6 +104,7 @@ export default function App() {
       setTrail([{ label: 'Starting point saved', detail: `${result.readiness.value}/100 · ${result.findings.filter((item) => item.severity !== 'healthy').length} thing(s) to review before any change.`, state: 'done' }])
       setShowPlan(false)
       setMessage(`Workspace checked. Codex can now help you review the next step. Readiness: ${result.readiness.value}/100.`)
+      await refreshBackups()
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'The browser could not read the selected workspace.')
     } finally {
@@ -121,13 +133,29 @@ export default function App() {
       setShowPlan(false)
       setMessage(getEnvironmentAccessMode() === 'demo' ? 'Demo cleanup complete and checked. No disk file was changed.' : 'Cleanup complete. A backup was created and the workspace was checked again.')
       record('Your approved cleanup is complete', `${selectedFixes.length} selected change(s) were applied and checked.`)
-      if (baseline && result.readiness.value > baseline.readiness.value) { setCelebrating(true); window.setTimeout(() => setCelebrating(false), 2600) }
+      await refreshBackups()
+      if (baseline && result.readiness.value > baseline.readiness.value) celebrate()
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'The reviewed hardening changes could not be applied.')
     } finally { setBusy(false) }
   }
 
-  return <main className="shell">{celebrating && <div className="confetti" aria-label="Verified cleanup celebration">{Array.from({ length: 18 }, (_, index) => <i key={index} style={{ '--i': index } as CSSProperties} />)}</div>}
+  const restoreSelectedBackup = async (backup: BackupEntry) => {
+    if (!window.confirm(`Restore ${backup.path} from this backup? The current file will be saved first.`)) return
+    setBusy(true)
+    try {
+      const result = await restoreBackup(backup.id)
+      setScan(result.scan)
+      setShowPlan(false)
+      setMessage(`Restored ${result.restoredPath}. The previous state was saved as a safety backup.`)
+      record('Backup restored', `${result.restoredPath} is back in the workspace; a safety copy was created.`)
+      await refreshBackups()
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'The selected backup could not be restored.')
+    } finally { setBusy(false) }
+  }
+
+  return <main className="shell">
     <header className="topline">
       <div className="wordmark"><span className="mark">M</span><div><strong>MCPation</strong><small>CODEX ENVIRONMENT DOCTOR</small></div></div>
       <div className="top-actions"><div className={'webmcp-state ' + (registered ? 'ready' : '')}><i />{registered ? webmcpMode === 'native' ? `${toolNames.length} Codex tools ready` : nativeFolderMode ? 'Enable Chrome WebMCP flag' : 'Open in a WebMCP browser' : 'Loading WebMCP'}</div></div>
@@ -169,6 +197,8 @@ export default function App() {
         <div className={'score-card ' + readinessClass(scan)}><div className="score-ring"><strong>{scan.readiness.value}</strong><small>/100</small></div><div><p className="kicker">READYNESS CHECK</p><h2>{scan.readiness.label === 'ready' ? 'Good to go' : scan.readiness.label === 'needs-attention' ? 'Worth a quick review' : 'Pause before the next run'}</h2><p>{scan.readiness.signals.join(' · ')}</p></div></div>
         <div className="scope-card"><p className="kicker">WHAT WE CHECKED</p><strong>{scan.scope.root}</strong><span>{scan.scope.mode === 'demo' ? 'Safe demo · in memory' : scan.scope.mode === 'codex-host' ? 'Checked with your Codex approval' : scan.scope.mode === 'direct' ? 'Browser folder access' : 'Read-only browser import'} · {scan.sources.length} config source{scan.sources.length === 1 ? '' : 's'}</span><small>{scan.scope.mode === 'direct' ? 'If you approve a fix, the browser uses this same folder — no second folder picker.' : scan.scope.mode === 'import' ? 'Codex can apply the selected action through its approved workspace handoff when this is the current Codex workspace.' : 'Codex sees a safe summary, not your raw files.'}</small></div>
       </section>
+
+      {scan.scope.mode === 'direct' && <section className="backup-panel"><div className="panel-title"><div><p className="kicker">REVERSIBLE CHANGE HISTORY</p><strong>Workspace backups</strong></div><span>{backups.length}</span></div><p className="panel-note">Approved cleanups keep the original here. Restore one with a click; MCPation saves the current file again before it rewinds anything.</p>{backups.length ? <div className="backup-list">{backups.map((backup) => <article key={backup.id}><div><strong>{backup.path}</strong><small>{backup.createdAt ? new Date(backup.createdAt).toLocaleString() : 'Saved before an approved cleanup'}</small></div><button onClick={() => void restoreSelectedBackup(backup)} disabled={busy}>Restore</button></article>)}</div> : <div className="backup-empty">No approved browser cleanup yet. Backups will appear here after the first write.</div>}</section>}
 
       <section className="dashboard-heading"><div><p className="kicker">AGENT-READY INVENTORY</p><h2>{showPlan ? 'Choose fixes and approve them' : 'What Codex can act on'}</h2></div><button className="plan-button" onClick={() => setShowPlan(!showPlan)}>{showPlan ? 'Back to inventory' : `Fix findings — supervised · ${plan?.items.length || 0}`}</button></section>
 

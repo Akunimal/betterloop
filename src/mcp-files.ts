@@ -1,7 +1,7 @@
 import { analyzeCodexWorkspace, type WorkspaceFile } from './codex-analysis.ts'
 import { DEMO_CONFIG_DOCUMENTS, DEMO_WORKSPACE_FILES } from './demo-workspace.ts'
 import { matchCodexSourceForPath } from './mcp-paths.ts'
-import type { AnalysisResult, ApplyResult, ConfigDocument, WorkspaceAccessMode } from './mcp-types.ts'
+import type { AnalysisResult, ApplyResult, BackupEntry, ConfigDocument, RestoreResult, WorkspaceAccessMode } from './mcp-types.ts'
 
 const DB_NAME = 'mcpation-files-v1'
 const STORE_NAME = 'handles'
@@ -57,6 +57,54 @@ async function fileAt(root: FileSystemDirectoryHandle, parts: string[]): Promise
     for (const part of parts.slice(0, -1)) directory = await directory.getDirectoryHandle(part)
     return await directory.getFileHandle(parts[parts.length - 1] || '')
   } catch { return null }
+}
+
+const BACKUP_MANIFEST = 'index.json'
+
+function backupPathSuffix(path: string): string {
+  return `-${path.replace(/\\/g, '/').replace(/\//g, '--')}.bak`
+}
+
+function safeBackupTag(tag: string): string {
+  return tag.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 80)
+}
+
+async function readBackupManifest(directory: FileSystemDirectoryHandle): Promise<BackupEntry[]> {
+  try {
+    const handle = await directory.getFileHandle(BACKUP_MANIFEST)
+    const file = await handle.getFile()
+    const parsed = JSON.parse(await file.text())
+    if (!Array.isArray(parsed)) return []
+    return parsed.filter((entry): entry is BackupEntry => Boolean(
+      entry && typeof entry.id === 'string' && /^[^/\\.][^/\\]*$/.test(entry.id) && entry.id !== BACKUP_MANIFEST
+      && typeof entry.path === 'string' && typeof entry.actionId === 'string' && typeof entry.createdAt === 'string',
+    ))
+  } catch { return [] }
+}
+
+async function writeBackupManifest(directory: FileSystemDirectoryHandle, entries: BackupEntry[]): Promise<void> {
+  const handle = await directory.getFileHandle(BACKUP_MANIFEST, { create: true })
+  const writer = await handle.createWritable()
+  await writer.write(`${JSON.stringify(entries.slice(-120), null, 2)}\n`)
+  await writer.close()
+}
+
+async function createWorkspaceBackup(root: FileSystemDirectoryHandle, path: string, original: string, actionId: string, tag = ''): Promise<string> {
+  const directory = await root.getDirectoryHandle('.mcpation-backups', { create: true })
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
+  const prefix = tag ? `${safeBackupTag(tag)}-` : ''
+  const backupName = `${prefix}${timestamp}-${safeBackupTag(actionId)}${backupPathSuffix(path)}`
+  const backup = await directory.getFileHandle(backupName, { create: true })
+  const writer = await backup.createWritable()
+  await writer.write(original)
+  await writer.close()
+  await ignoreBackupDirectory(root)
+  if (!tag) {
+    const entries = await readBackupManifest(directory)
+    entries.push({ id: backupName, path, actionId, createdAt: new Date().toISOString() })
+    await writeBackupManifest(directory, entries)
+  }
+  return `.mcpation-backups/${backupName}`
 }
 
 function configDocumentsForFiles(files: WorkspaceFile[], manualOnly: boolean): ConfigDocument[] {
@@ -202,6 +250,71 @@ export async function grantWriteAccessToConnectedEnvironment(): Promise<Analysis
   return scanRoot(rootHandle)
 }
 
+export async function listBrowserBackups(): Promise<BackupEntry[]> {
+  if (accessMode !== 'direct') return []
+  rootHandle ||= await restoreRoot()
+  if (!rootHandle || !(await permissionGranted(rootHandle))) return []
+  let directory: FileSystemDirectoryHandle
+  try { directory = await rootHandle.getDirectoryHandle('.mcpation-backups') } catch { return [] }
+
+  const manifest = await readBackupManifest(directory)
+  if (manifest.length) {
+    const existing: BackupEntry[] = []
+    for (const entry of manifest) {
+      try {
+        const handle = await directory.getFileHandle(entry.id)
+        const file = await handle.getFile()
+        existing.push({ ...entry, createdAt: entry.createdAt || (Number.isFinite(file.lastModified) ? new Date(file.lastModified).toISOString() : '') })
+      } catch { /* stale manifest records are ignored */ }
+    }
+    return existing.sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id))
+  }
+
+  // Older backups predate the manifest. Keep them discoverable while this
+  // workspace is still showing the action paths from the current scan.
+  const actions = latestAnalysis?.removals || []
+  const discovered: BackupEntry[] = []
+  for await (const entry of directory.values()) {
+    if (entry.kind !== 'file' || entry.name === BACKUP_MANIFEST || entry.name.startsWith('restore-')) continue
+    const action = actions.find((item) => entry.name.endsWith(backupPathSuffix(item.path)))
+    if (!action) continue
+    let createdAt = ''
+    try {
+      const file = await (entry as FileSystemFileHandle).getFile()
+      createdAt = Number.isFinite(file.lastModified) ? new Date(file.lastModified).toISOString() : ''
+    } catch { /* metadata is optional */ }
+    discovered.push({ id: entry.name, path: action.path, actionId: action.actionId, createdAt })
+  }
+  return discovered.sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id))
+}
+
+export async function restoreBrowserBackup(backupId: string): Promise<RestoreResult> {
+  if (accessMode !== 'direct') throw new Error('Backups can be restored only for a directly connected Chrome workspace.')
+  if (!backupId || backupId === BACKUP_MANIFEST || /[\\/]/.test(backupId) || backupId.includes('..')) throw new Error('The selected backup id is invalid.')
+  rootHandle ||= await restoreRoot()
+  if (!rootHandle || (await rootHandle.requestPermission({ mode: 'readwrite' })) !== 'granted') throw new Error('Write permission was not granted. Nothing was changed.')
+  const entries = await listBrowserBackups()
+  const entry = entries.find((item) => item.id === backupId)
+  if (!entry) throw new Error('That backup is no longer available in the selected workspace.')
+  const directory = await rootHandle.getDirectoryHandle('.mcpation-backups')
+  const backup = await directory.getFileHandle(entry.id)
+  const backupFile = await backup.getFile()
+  const restoredText = await backupFile.text()
+  try {
+    const parsed = JSON.parse(restoredText)
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('not an object')
+  } catch { throw new Error('The selected backup is not a valid JSON document. Nothing was changed.') }
+  const target = await fileAt(rootHandle, entry.path.split('/'))
+  if (!target) throw new Error(`The original file ${entry.path} is no longer in the selected workspace.`)
+  const currentFile = await target.getFile()
+  const safetyBackup = await createWorkspaceBackup(rootHandle, entry.path, await currentFile.text(), entry.actionId, 'restore')
+  const writer = await target.createWritable()
+  await writer.write(restoredText)
+  await writer.close()
+  const scan = await scanRoot(rootHandle)
+  return { scan: scan.scan, restoredPath: entry.path, source: `.mcpation-backups/${entry.id}`, safetyBackup }
+}
+
 export async function importEnvironment(files: FileList | File[]): Promise<AnalysisResult> {
   const selectedFiles = Array.from(files)
   if (!selectedFiles.length) throw new Error('No folder was selected.')
@@ -270,19 +383,13 @@ export async function applyBrowserFixes(actionIds: string[]): Promise<ApplyResul
       const original = await file.text()
       const document = JSON.parse(original) as Record<string, Record<string, unknown>>
       if (!document[action.groupKey] || !(action.serverName in document[action.groupKey])) { skippedActionIds.push(action.actionId); continue }
-      const backupDirectory = await rootHandle.getDirectoryHandle('.mcpation-backups', { create: true })
-      const backupName = `${new Date().toISOString().replace(/[:.]/g, '-')}-${parts.join('--')}.bak`
-      const backup = await backupDirectory.getFileHandle(backupName, { create: true })
-      const backupWriter = await backup.createWritable()
-      await backupWriter.write(original)
-      await backupWriter.close()
-      await ignoreBackupDirectory(rootHandle)
+      const backupPath = await createWorkspaceBackup(rootHandle, action.path, original, action.actionId)
       delete document[action.groupKey][action.serverName]
       const writer = await handle.createWritable()
       await writer.write(`${JSON.stringify(document, null, 2)}\n`)
       await writer.close()
       appliedActionIds.push(action.actionId)
-      backups.push(`.mcpation-backups/${backupName}`)
+      backups.push(backupPath)
     } catch {
       skippedActionIds.push(action.actionId)
     }

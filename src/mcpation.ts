@@ -1,4 +1,4 @@
-import { applyBrowserFixes, connectEnvironment, fileSystemAccessSupported, getAccessMode, getLatestAnalysis, grantWriteAccessToConnectedEnvironment, importEnvironment, ingestHostSnapshot, rescanEnvironment, restoreEnvironmentAccess, startDemoEnvironment } from './mcp-files.ts'
+import { applyBrowserFixes, connectEnvironment, fileSystemAccessSupported, getAccessMode, getLatestAnalysis, grantWriteAccessToConnectedEnvironment, importEnvironment, ingestHostSnapshot, listBrowserBackups, rescanEnvironment, restoreBrowserBackup, restoreEnvironmentAccess, startDemoEnvironment } from './mcp-files.ts'
 import { buildHostApplyHandoff, buildHostScanHandoff } from './codex-handoff.ts'
 import { parseCleanupToolInput, parseHostHandoffInput, parseHostSnapshotInput, parseRequiredId } from './mcp-tool-input.ts'
 import type { ScanResult } from './mcp-types.ts'
@@ -6,6 +6,7 @@ import { getModelContext, getWebMCPMode } from './webmcp/polyfill.ts'
 import type { WebMCPTool } from './webmcp-types.ts'
 
 export type { ScanResult } from './mcp-types.ts'
+export type { BackupEntry, RestoreResult } from './mcp-types.ts'
 
 let registered = false
 
@@ -34,6 +35,9 @@ export async function rescanConnectedEnvironment(): Promise<ScanResult> {
 export async function applySupervisedFixes(selectedActionIds: string[]): Promise<ScanResult> {
   return (await applyBrowserFixes(selectedActionIds)).scan
 }
+
+export const listBackups = listBrowserBackups
+export const restoreBackup = restoreBrowserBackup
 
 export async function approveAndApplyBrowserFixes(selectedActionIds: string[]): Promise<ScanResult> {
   if (getAccessMode() !== 'demo') await grantWriteAccessToConnectedEnvironment()
