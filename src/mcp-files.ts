@@ -285,14 +285,22 @@ export async function listBrowserBackups(): Promise<BackupEntry[]> {
     } catch { /* stale manifest records are ignored */ }
   }
   const knownIds = new Set(existing.map((entry) => entry.id))
+  const directoryEntries: FileSystemHandle[] = []
+  let hasLegacyRestoreMarker = false
+  for await (const entry of directory.values()) {
+    directoryEntries.push(entry)
+    if (entry.kind === 'file' && entry.name.startsWith('restore-')) hasLegacyRestoreMarker = true
+  }
   // Older backups predate the manifest. Keep them discoverable even after the
   // current scan has no remaining removal action for their original file.
   const actions = latestAnalysis?.removals || []
-  for await (const entry of directory.values()) {
+  for (const entry of directoryEntries) {
     if (entry.kind !== 'file' || knownIds.has(entry.name) || entry.name === BACKUP_MANIFEST || entry.name.startsWith('restore-')) continue
     const action = actions.find((item) => entry.name.endsWith(backupPathSuffix(item.path)))
     const legacy = legacyBackupEntry(entry.name)
-    const backup = action ? { id: entry.name, path: action.path, actionId: action.actionId, createdAt: '' } : legacy
+    const backup = action
+      ? { id: entry.name, path: action.path, actionId: action.actionId, createdAt: '' }
+      : legacy ? { ...legacy, ...(hasLegacyRestoreMarker ? { restoredAt: 'legacy-restore-detected' } : {}) } : null
     if (!backup) continue
     let createdAt = ''
     try {

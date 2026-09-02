@@ -8,6 +8,11 @@ function readinessClass(scan: ScanResult | null): string {
   return scan.readiness.label === 'ready' ? 'good' : scan.readiness.label === 'needs-attention' ? 'warn' : 'risk'
 }
 
+function backupEventLabel(prefix: string, value: string): string {
+  const timestamp = Date.parse(value)
+  return Number.isFinite(timestamp) ? `${prefix} ${new Date(timestamp).toLocaleString()}` : `${prefix} in an earlier run`
+}
+
 export default function App() {
   const [scan, setScan] = useState<ScanResult | null>(getLatestScan())
   const [registered, setRegistered] = useState(false)
@@ -198,7 +203,7 @@ export default function App() {
         <div className="scope-card"><p className="kicker">WHAT WE CHECKED</p><strong>{scan.scope.root}</strong><span>{scan.scope.mode === 'demo' ? 'Safe demo · in memory' : scan.scope.mode === 'codex-host' ? 'Checked with your Codex approval' : scan.scope.mode === 'direct' ? 'Browser folder access' : 'Read-only browser import'} · {scan.sources.length} config source{scan.sources.length === 1 ? '' : 's'}</span><small>{scan.scope.mode === 'direct' ? 'If you approve a fix, the browser uses this same folder — no second folder picker.' : scan.scope.mode === 'import' ? 'Codex can apply the selected action through its approved workspace handoff when this is the current Codex workspace.' : 'Codex sees a safe summary, not your raw files.'}</small></div>
       </section>
 
-      {scan.scope.mode === 'direct' && <section className="backup-panel"><div className="panel-title"><div><p className="kicker">REVERSIBLE CHANGE HISTORY</p><strong>Workspace snapshots</strong></div><span>{backups.length}</span></div><p className="panel-note">Each approved cleanup keeps its own original here. Restore a snapshot once; after that it is locked as <em>Restored</em>. MCPation saves the current file again before any rewind.</p>{backups.length ? <div className="backup-list">{backups.map((backup) => <article key={backup.id}><div><strong>{backup.path}</strong><small>{backup.restoredAt ? `Restored ${new Date(backup.restoredAt).toLocaleString()}` : backup.createdAt ? `Saved ${new Date(backup.createdAt).toLocaleString()}` : 'Saved before an approved cleanup'}</small></div><button onClick={() => void restoreSelectedBackup(backup)} disabled={busy || Boolean(backup.restoredAt)}>{backup.restoredAt ? 'Restored' : 'Restore'}</button></article>)}</div> : <div className="backup-empty">No approved browser cleanup yet. Snapshots will appear here after the first write.</div>}</section>}
+      {scan.scope.mode === 'direct' && <section className="backup-panel"><div className="panel-title"><div><p className="kicker">REVERSIBLE CHANGE HISTORY</p><strong>Workspace snapshots</strong></div><span>{backups.length}</span></div><p className="panel-note">Each approved cleanup keeps its own original here. Restore a snapshot once; after that it is locked as <em>Restored</em>. MCPation saves the current file again before any rewind.</p>{backups.length ? <div className="backup-list">{backups.map((backup) => <article key={backup.id}><div><strong>{backup.path}</strong><small>{backup.restoredAt ? backupEventLabel('Restored', backup.restoredAt) : backup.createdAt ? backupEventLabel('Saved', backup.createdAt) : 'Saved before an approved cleanup'}</small></div><button onClick={() => void restoreSelectedBackup(backup)} disabled={busy || Boolean(backup.restoredAt)}>{backup.restoredAt ? 'Restored' : 'Restore'}</button></article>)}</div> : <div className="backup-empty">No approved browser cleanup yet. Snapshots will appear here after the first write.</div>}</section>}
 
       <section className="dashboard-heading"><div><p className="kicker">AGENT-READY INVENTORY</p><h2>{showPlan ? 'Choose fixes and approve them' : 'What Codex can act on'}</h2></div><button className="plan-button" onClick={() => setShowPlan(!showPlan)}>{showPlan ? 'Back to inventory' : `Fix findings — supervised · ${plan?.items.length || 0}`}</button></section>
 

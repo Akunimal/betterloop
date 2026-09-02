@@ -181,7 +181,9 @@ assert.equal(restoredEntries.length, 1)
 assert.ok(restoredEntries[0].restoredAt)
 await assert.rejects(() => restoreBrowserBackup(listedBackups[0].id), /already restored/)
 browserBackups.entries.set('2026-09-02T15-44-33-209Z-.mcp.json.bak', new MemoryFile('2026-09-02T15-44-33-209Z-.mcp.json.bak', browserMcp.text()))
-assert.equal((await listBrowserBackups()).length, 2)
+const legacyEntries = await listBrowserBackups()
+assert.equal(legacyEntries.length, 2)
+assert.ok(legacyEntries.find((entry) => entry.id.startsWith('2026-09-'))?.restoredAt)
 delete (globalThis as any).window
 
 assert.deepEqual(parseCleanupToolInput({ actionIds: ['remove-one', 'remove-one'], confirm: true }), ['remove-one'])
