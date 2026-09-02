@@ -131,7 +131,7 @@ export default function App() {
         <h2>{scan ? scan.scope.root : 'Start with one workspace'}</h2>
         <input ref={folderInput} type="file" multiple hidden onChange={(event) => void importFolder(event.currentTarget.files)} {...({ webkitdirectory: '' } as { webkitdirectory: string })} />
         <button className="primary-button" onClick={() => void scanNow()} disabled={busy}>{busy ? 'Analyzing workspace…' : scan ? 'Rescan workspace' : 'Choose workspace folder'} <b>→</b></button>
-        <small>{scan?.scope.mode === 'codex-host' ? 'Codex is checking the workspace you approved; only the agreed summary comes back here.' : 'This first check is read-only; nothing runs and nothing changes.'} It never looks outside the workspace you chose.</small>
+        <small>{scan?.scope.mode === 'codex-host' ? 'Codex is checking the workspace you approved; only the agreed summary comes back here.' : 'The first check only reads; nothing runs and nothing changes.'} It never looks outside the workspace you chose.</small>
       </aside>
     </section>
 
@@ -148,7 +148,7 @@ export default function App() {
 
     {!scan ? <section className="empty-state">
       <div className="empty-icon">◎</div>
-      <div><p className="kicker">ONE WORKSPACE · READ ONLY</p><h2>Choose a workspace you want to understand.</h2><p>MCPation only reads the setup files that matter. When you approve a supported fix later, the browser asks separately for permission to write only to the folder you choose.</p></div>
+      <div><p className="kicker">ONE WORKSPACE · EXPLICIT ACCESS</p><h2>Choose a workspace you want to understand.</h2><p>MCPation only reads the setup files that matter at first. A supported fix still requires your exact checkbox and confirmation.</p></div>
       <div className="empty-steps"><span><b>01</b> Choose workspace</span><span><b>02</b> See what needs attention</span><span><b>03</b> Decide what to do</span></div>
     </section> : <>
       <section className="readiness-row">

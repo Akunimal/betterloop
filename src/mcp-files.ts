@@ -186,7 +186,10 @@ export async function restoreEnvironmentAccess(): Promise<boolean> {
 
 export async function connectEnvironment(): Promise<AnalysisResult> {
   if (!fileSystemAccessSupported()) throw new Error('This browser does not expose the File System Access API.')
-  rootHandle = await window.showDirectoryPicker({ id: 'mcpation-environment', mode: 'read' })
+  // Codex's embedded browser can abort a read-scoped handle when it is later
+  // upgraded. Request the one bounded workspace grant once; scanning still
+  // performs no writes until the user selects and confirms a fix.
+  rootHandle = await window.showDirectoryPicker({ id: 'mcpation-environment', mode: 'readwrite' })
   try { await storeRoot(rootHandle) } catch { /* Private browsing may not persist handles; the current session still works. */ }
   return scanRoot(rootHandle)
 }

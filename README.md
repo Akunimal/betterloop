@@ -43,7 +43,7 @@ Downloaded MCP code is never executed. Package entries are static evidence; they
 
 ## Permission model
 
-A normal web page starts with no filesystem access. Where File System Access is available, **Choose workspace folder** is the one native folder picker: it retains a read-scoped handle for that folder and analyzes only allowlisted files. When the person selects an exact supported cleanup, **Approve & apply** asks to elevate access for that same handle—without another folder picker. MCPation stores the original under `.mcpation-backups/`, adds that directory to an existing `.gitignore` when needed, applies only the checked JSON cleanup, and rescans.
+A normal web page starts with no filesystem access. Where File System Access is available, **Choose workspace folder** is the one native folder picker and one bounded workspace grant. MCPation initially only analyzes allowlisted files; it writes only after the person checks an exact supported cleanup and confirms **Approve & apply**. It stores the original under `.mcpation-backups/`, adds that directory to an existing `.gitignore` when needed, applies only the checked JSON cleanup, and rescans.
 
 MCPation registers native `document.modelContext` tools in supported WebMCP browser contexts, including ChatGPT's in-app browser and Chrome 149+ with WebMCP enabled. When that API is unavailable, it shows a local preview; the preview does not advertise native tools.
 
@@ -58,7 +58,7 @@ The repository includes [`demo-workspace`](demo-workspace) with safe, intentiona
 1. Open the deployed app: <https://mcpation.vercel.app/> in Codex/ChatGPT's in-app browser, or in Chrome 149+ with the WebMCP testing flag enabled.
 2. Choose `demo-workspace` in the folder picker/import flow.
 3. Let Codex call `codex_scan_workspace`, `codex_get_tool_inventory`, `codex_get_findings`, and `codex_plan_hardening`.
-4. Review the duplicate proposal, select it, and click **Approve & apply**. Approve the browser's write escalation for the already selected folder. MCPation saves the original in `.mcpation-backups/`, updates an existing `.gitignore` if needed, applies the exact JSON cleanup, and rescans.
+4. Review the duplicate proposal, select it, and click **Approve & apply**. MCPation uses the already granted workspace only after this explicit confirmation, saves the original in `.mcpation-backups/`, updates an existing `.gitignore` if needed, applies the exact JSON cleanup, and rescans.
 5. Ask Codex to call `codex_verify_workspace` and report the current readiness, remaining findings, and what MCPation changed.
 
 ## Local development

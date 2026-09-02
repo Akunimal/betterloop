@@ -153,7 +153,7 @@ const browserGitignore = new MemoryFile('.gitignore', 'node_modules/\n')
 browserRoot.entries.set('.gitignore', browserGitignore)
 ;(globalThis as any).window = {
   dispatchEvent: () => true,
-  showDirectoryPicker: async () => browserRoot,
+  showDirectoryPicker: async (options: { mode: string }) => { assert.equal(options.mode, 'readwrite'); return browserRoot },
 }
 const direct = await connectEnvironment()
 const directAction = direct.removals.find((item) => item.path === '.mcp.json')
