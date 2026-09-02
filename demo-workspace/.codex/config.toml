@@ -1,0 +1,10 @@
+shell = "pwsh"
+
+[mcp_servers.filesystem]
+command = "npx"
+args = ["-y", "@modelcontextprotocol/server-filesystem", "./workspace"]
+
+[mcp_servers.docs]
+command = "node"
+args = ["docs-server.js"]
+enabled = false

@@ -1,0 +1,8 @@
+{
+  "name": "codex-demo-workspace",
+  "private": true,
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "@modelcontextprotocol/server-filesystem": "^1.0.0"
+  }
+}

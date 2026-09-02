@@ -1,7 +1,7 @@
 {
   "name": "mcpation",
   "version": "1.0.0",
-  "description": "A browser-native WebMCP environment cleaner for Codex and local MCP configurations",
+  "description": "A browser-native WebMCP Codex Environment Doctor for workspace readiness, hardening, and verification",
   "type": "module",
   "scripts": {
     "dev": "vite",

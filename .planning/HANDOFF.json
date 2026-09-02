@@ -1,27 +1,27 @@
 {
   "version": "2.0",
-  "timestamp": "2026-09-01T23:00:00Z",
-  "phase": "browser-native-delivery",
-  "phase_name": "WebMCP-native filesystem cleaner",
-  "status": "in_progress",
+  "timestamp": "2026-09-02T01:10:13Z",
+  "phase": "codex-environment-doctor",
+  "phase_name": "Codex workspace readiness gate",
+  "status": "ready_for_recording",
   "completed_tasks": [
     "Removed the localhost companion architecture",
     "Added browser-granted filesystem discovery and persisted handles",
     "Moved parsing and recommendations into the client",
     "Added browser analysis tests",
-    "Updated the seven WebMCP tools and delivery copy"
+    "Added Codex workspace artifact, package, instruction-chain, and readiness analysis",
+    "Added deterministic hardening apply and verify tools with backup validation",
+    "Added a safe demo-workspace fixture and rewrote delivery/recording docs"
   ],
   "remaining_tasks": [
-    "Validate the native directory picker in the in-app browser",
-    "Refresh Graphify",
-    "Commit, push, deploy, and verify production",
     "Record the public demo video"
   ],
   "decisions": [
     "WebMCP is the product surface and all diagnosis runs client-side.",
     "Filesystem access requires a visible native browser permission; WebMCP never opens a picker implicitly.",
-    "Only known MCP configuration paths inside the granted folder are read.",
-    "Ambiguous repairs remain manual and the demo stops before applying changes."
+    "Only bounded Codex/MCP config, package, instruction, and skill metadata inside the granted workspace are read.",
+    "Downloaded MCP code is never executed; static package evidence is not presented as live runtime state.",
+    "Only exact deterministic JSON duplicate actions can be applied after backup and explicit review."
   ],
-  "next_action": "Run full verification, rebuild Graphify, then test and deploy the browser-native flow."
+  "next_action": "Record the public demo using DEMO_RUNBOOK.md; the code, docs, map, tests, and deployment are ready."
 }

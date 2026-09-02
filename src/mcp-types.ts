@@ -1,5 +1,39 @@
 export type FindingSeverity = 'healthy' | 'attention' | 'review'
 
+export type WorkspaceArtifactKind = 'codex-config' | 'mcp-config' | 'instruction' | 'skill' | 'package-manifest' | 'lockfile' | 'other'
+
+export interface WorkspaceArtifact {
+  id: string
+  path: string
+  kind: WorkspaceArtifactKind
+  label: string
+  detail: string
+}
+
+export interface ToolSurfaceEntry {
+  id: string
+  name: string
+  source: string
+  declaredIn: string
+  kind: 'configured-server' | 'package-dependency' | 'static-declaration'
+  transport?: 'stdio' | 'http'
+  target?: string
+  confidence: 'high' | 'medium' | 'low'
+}
+
+export interface InstructionEntry {
+  path: string
+  kind: 'AGENTS.md' | 'AGENTS.override.md' | 'SKILL.md'
+  depth: number
+  label: string
+}
+
+export interface ReadinessScore {
+  value: number
+  label: 'ready' | 'needs-attention' | 'high-risk'
+  signals: string[]
+}
+
 export interface MCPServer {
   id: string
   name: string
@@ -19,6 +53,7 @@ export interface ScanResult {
   schemaVersion: number
   scannedAt: string
   platform: string
+  scope: { root: string; mode: 'direct' | 'import' | 'demo'; filesConsidered: number }
   host: HostProfile
   sources: string[]
   supportedSources: string[]
@@ -27,6 +62,10 @@ export interface ScanResult {
   findings: Finding[]
   proposals: FixProposal[]
   recommendations: Recommendation[]
+  artifacts: WorkspaceArtifact[]
+  toolSurface: ToolSurfaceEntry[]
+  instructionChain: InstructionEntry[]
+  readiness: ReadinessScore
   privacy: string
 }
 
@@ -40,4 +79,10 @@ export interface ConfigDocument {
 }
 
 export interface RemovalAction { actionId: string; path: string; groupKey: string; serverName: string }
+export interface ApplyResult {
+  scan: ScanResult
+  appliedActionIds: string[]
+  skippedActionIds: string[]
+  backups: string[]
+}
 export interface AnalysisResult { scan: ScanResult; removals: RemovalAction[] }

@@ -2,7 +2,7 @@ import type { AnalysisResult, ConfigDocument, MCPServer, RemovalAction, ScanResu
 
 interface InternalServer extends MCPServer { client: string; path: string; format: 'json' | 'toml'; groupKey: string; signature: string; manualOnly: boolean; strictJson: boolean }
 
-export const SUPPORTED_SOURCES = ['Codex', 'Claude Desktop', 'Cursor', 'Windsurf', 'VS Code Agent Host', 'VS Code User', 'Cline', 'Roo Code', 'Zed']
+export const SUPPORTED_SOURCES = ['Codex', 'Codex workspace MCP']
 
 function stableId(value: string): string {
   let hash = 2166136261
@@ -19,8 +19,14 @@ function safeTarget(command: string, url: string): string {
   return command ? command.replace(/\\/g, '/').split('/').pop() || command : 'missing transport'
 }
 
+function parseTomlArray(value: string): string[] {
+  if (!value.trim().startsWith('[')) return value ? [value] : []
+  return [...value.matchAll(/['"]([^'"]*)['"]/g)].map((match) => match[1])
+}
+
 function serverSignature(value: Record<string, unknown>): string {
-  return stableId(JSON.stringify({ command: value.command || '', args: value.args || [], url: value.url || '', disabled: Boolean(value.disabled), env: value.env || {}, headers: value.headers || {} }))
+  const args = Array.isArray(value.args) ? value.args.map(String) : typeof value.args === 'string' ? parseTomlArray(value.args) : []
+  return stableId(JSON.stringify({ command: value.command || '', args, url: value.url || '', disabled: Boolean(value.disabled), env: value.env || {}, headers: value.headers || {} }))
 }
 
 function parseJsonDocument(document: ConfigDocument): { servers: InternalServer[]; malformed: boolean } {
@@ -50,7 +56,8 @@ function parseTomlDocument(document: ConfigDocument): { servers: InternalServer[
     if (!name) return
     const command = scalar(values.command)
     const url = scalar(values.url)
-    servers.push({ id: `${document.label}:${name}:${stableId(document.path)}`, name, source: document.label, client: document.client, path: document.path, format: 'toml', groupKey: '', transport: url ? 'http' : 'stdio', target: safeTarget(command, url), disabled: scalar(values.enabled) === 'false' || scalar(values.disabled) === 'true', signature: stableId(JSON.stringify(values)), manualOnly: true, strictJson: false })
+    const disabled = scalar(values.enabled) === 'false' || scalar(values.disabled) === 'true'
+    servers.push({ id: `${document.label}:${name}:${stableId(document.path)}`, name, source: document.label, client: document.client, path: document.path, format: 'toml', groupKey: '', transport: url ? 'http' : 'stdio', target: safeTarget(command, url), disabled, signature: serverSignature({ command, args: values.args, url, disabled }), manualOnly: true, strictJson: false })
   }
   for (const raw of document.text.split(/\r?\n/)) {
     const header = raw.match(/^\s*\[mcp_servers\.([A-Za-z0-9_-]+|"[^"]+"|'[^']+')\]\s*$/)
@@ -90,7 +97,8 @@ export function analyzeDocuments(documents: ConfigDocument[], platform = typeof 
   }
   for (const matches of bySignature.values()) if (matches.length > 1) {
     const [keep, ...duplicates] = matches
-    add('attention', `Exact duplicate: ${keep.name}`, `The same server definition appears in ${matches.map((item) => item.source).join(', ')}.`)
+    const sourceNames = [...new Set(matches.map((item) => item.source))]
+    add('attention', `Exact duplicate: ${keep.name}`, `The same server definition appears ${matches.length} times${sourceNames.length ? ` across ${sourceNames.join(', ')}` : ''}.`)
     for (const duplicate of duplicates) {
       const actionId = `remove-${duplicate.id}`
       const canApply = duplicate.format === 'json' && duplicate.strictJson && !duplicate.manualOnly && Boolean(duplicate.groupKey)
@@ -115,5 +123,6 @@ export function analyzeDocuments(documents: ConfigDocument[], platform = typeof 
   const recommendations: ScanResult['recommendations'] = proposals.map((proposal) => ({ id: proposal.id, priority: proposal.canApply ? 'high' : 'review', category: proposal.id.startsWith('transport-') ? 'compatibility' : 'cleanup', title: proposal.title, reason: proposal.detail, action: proposal.canApply ? 'Review the backed-up browser write' : 'Review with Codex' }))
   if (profiles.length > 2) recommendations.push({ id: 'consolidate-sources', priority: 'review', category: 'performance', title: 'Reduce configuration drift', reason: `${profiles.length} connected environments maintain separate MCP lists.`, action: 'Choose one canonical list and document intentional differences' })
   const servers = all.map(({ id, name, source, transport, target, disabled }) => ({ id, name, source, transport, target, disabled }))
-  return { scan: { schemaVersion: 4, scannedAt: new Date().toISOString(), platform, host: { operatingSystem: 'Browser-granted filesystem', codexShell, recommendedShell: 'Use the shell explicitly configured for each project' }, sources: documents.map((document) => document.label), supportedSources: SUPPORTED_SOURCES, profiles, servers, findings, proposals, recommendations, privacy: 'Analysis runs in this browser tab. Only known MCP configuration files are read; secrets and file contents are never returned by WebMCP tools.' }, removals }
+  const defaultReadiness = all.length && !findings.some((finding) => finding.severity !== 'healthy') ? 100 : Math.max(0, 100 - findings.filter((finding) => finding.severity === 'attention').length * 10 - findings.filter((finding) => finding.severity === 'review').length * 15)
+  return { scan: { schemaVersion: 5, scannedAt: new Date().toISOString(), platform, scope: { root: 'connected folder', mode: 'direct', filesConsidered: documents.length }, host: { operatingSystem: 'Browser-granted filesystem', codexShell, recommendedShell: 'Use the shell explicitly configured for each project' }, sources: documents.map((document) => document.label), supportedSources: SUPPORTED_SOURCES, profiles, servers, findings, proposals, recommendations, artifacts: [], toolSurface: [], instructionChain: [], readiness: { value: defaultReadiness, label: defaultReadiness >= 80 ? 'ready' : defaultReadiness >= 55 ? 'needs-attention' : 'high-risk', signals: [`${all.length} configured MCP server${all.length === 1 ? '' : 's'}`] }, privacy: 'Analysis runs in this browser tab. Only known MCP configuration files are read; secrets and file contents are never returned by WebMCP tools.' }, removals }
 }

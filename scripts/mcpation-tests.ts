@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict'
+import { analyzeCodexWorkspace } from '../src/codex-analysis.ts'
+import { applyBrowserFixes, startDemoEnvironment } from '../src/mcp-files.ts'
 import { analyzeDocuments } from '../src/mcp-analysis.ts'
+import { parseCleanupToolInput } from '../src/mcp-tool-input.ts'
 import { matchSourceForPath } from '../src/mcp-paths.ts'
 import type { ConfigDocument } from '../src/mcp-types.ts'
 
@@ -24,7 +27,7 @@ const documents: ConfigDocument[] = [
 
 const { scan, removals } = analyzeDocuments(documents, 'test')
 
-assert.equal(scan.schemaVersion, 4)
+assert.equal(scan.schemaVersion, 5)
 assert.equal(scan.servers.length, 6)
 assert.equal(scan.host.codexShell, 'pwsh')
 assert.ok(scan.findings.some((finding) => finding.title === 'Exact duplicate: shared'))
@@ -35,14 +38,44 @@ assert.equal(removals.length, 1)
 assert.equal(scan.proposals.find((proposal) => proposal.id === removals[0].actionId)?.canApply, true)
 assert.ok(!JSON.stringify(scan).includes('never-return-this'))
 assert.match(scan.privacy, /browser tab/i)
-assert.equal(scan.supportedSources.includes('Roo Code'), true)
+assert.equal(scan.supportedSources.includes('Codex'), true)
+assert.equal(scan.supportedSources.includes('Roo Code'), false)
+
+const enriched = analyzeCodexWorkspace([
+  { path: '.codex/config.toml', text: documents[3].text },
+  { path: 'AGENTS.md', text: '# Workspace rules\nKeep changes small.' },
+  { path: '.codex/skills/review/SKILL.md', text: '# Review skill\nReview changes.' },
+  { path: 'package.json', text: JSON.stringify({ name: 'demo', dependencies: { '@modelcontextprotocol/sdk': '^1.0.0', zod: '^3.0.0' } }) },
+  { path: 'package-lock.json', text: '{}' },
+], [documents[3]], { root: 'demo-workspace', mode: 'demo', filesConsidered: 5, platform: 'test' }).scan
+assert.equal(enriched.scope.mode, 'demo')
+assert.equal(enriched.artifacts.length, 5)
+assert.equal(enriched.instructionChain.length, 2)
+assert.ok(enriched.toolSurface.some((entry) => entry.kind === 'package-dependency'))
+assert.ok(enriched.toolSurface.some((entry) => entry.kind === 'configured-server'))
+assert.ok(enriched.readiness.value > 0)
+
+;(globalThis as any).window = { dispatchEvent: () => true }
+const demo = startDemoEnvironment()
+assert.equal(demo.scan.scope.mode, 'demo')
+assert.equal(demo.removals.length, 2)
+const demoApplied = await applyBrowserFixes([demo.removals[0].actionId])
+assert.deepEqual(demoApplied.appliedActionIds, [demo.removals[0].actionId])
+assert.equal(demoApplied.backups[0], '.mcp.json.mcpation-demo.bak')
+assert.equal(demoApplied.scan.findings.some((finding) => finding.title.startsWith('Exact duplicate:')), true)
+delete (globalThis as any).window
+
+assert.deepEqual(parseCleanupToolInput({ actionIds: ['remove-one', 'remove-one'], confirm: true }), ['remove-one'])
+assert.throws(() => parseCleanupToolInput({ actionIds: ['remove-one'] }), /confirm: true/)
+assert.throws(() => parseCleanupToolInput({ actionIds: [] , confirm: true }), /non-empty array/)
 
 const empty = analyzeDocuments([], 'test').scan
 assert.equal(empty.servers.length, 0)
 assert.equal(empty.findings[0].severity, 'healthy')
 
 assert.equal(matchSourceForPath('Home/.codex/config.toml')?.source.label, 'Codex')
-assert.equal(matchSourceForPath('Home\\AppData\\Roaming\\Code\\User\\mcp.json')?.source.label, 'VS Code User')
+assert.equal(matchSourceForPath('.codex/config.toml')?.source.label, 'Codex')
+assert.equal(matchSourceForPath('Home/.mcp.json')?.source.label, 'Codex workspace MCP')
 assert.equal(matchSourceForPath('Home/Documents/notes.json'), null)
 
 console.log('MCPation browser analysis tests passed.')

@@ -1,9 +1,56 @@
-# MCPation — WebMCP Challenge submission notes
+# MCPation — submission brief
 
-MCPation is a consent-first, Codex-first environment glow-up for people who build with many MCP servers. It turns scattered local MCP configuration into a structured inventory, compatibility check, and prioritized improvement plan an agent can inspect through WebMCP.
+## One-line pitch
 
-The user selects an environment folder through the browser. Direct-access browsers use the native File System Access API; Codex's embedded browser uses a read-only directory import. The page checks only known Windows, macOS, and Linux-relative configuration locations for Codex, Claude Desktop, Cursor, Windsurf, VS Code, Cline, Roo Code, and Zed. All parsing and diagnosis happen client-side. WebMCP receives metadata such as server name, source, transport, disabled status, conflicts, and recommendations; it never receives tokens, environment values, headers, full paths, or raw file contents. No Gemini or other model API key is required.
+MCPation is a WebMCP-powered **Codex Environment Doctor**: select one workspace, let Codex discover the MCP and instruction surface, explain the readiness risks, approve a precise hardening patch, and verify the result.
 
-WebMCP is the product surface: Codex can call seven page tools to rescan the approved environment, read the sanitized inventory, inspect findings, compare configured coverage, inspect the browser-granted scope, review recommendations, and generate a supervised cleanup plan. This creates a better human-agent workflow: the agent can identify duplicate definitions, name conflicts, disabled servers, invalid transports, and configuration drift while the user remains in control of every change.
+## The problem
 
-MCPation makes something difficult possible in one place: a human grants a precise browser capability, and the page plus agent reason about a fragmented MCP environment without installing a local service. Its supervised remediation workflow is deliberately separate from diagnosis; the demo stops at the plan. Ambiguous repairs stay manual; MCPation never guesses a command or chooses which conflicting server to delete.
+Codex workspaces quietly accumulate MCP definitions, package dependencies, `AGENTS.md` layers, and skills. A server can be duplicated between Codex and a project manifest, disabled without explanation, pointed at an invalid endpoint, or accompanied by guidance that the next agent will interpret differently. Existing dashboards show configuration; they do not turn it into a shared, reviewable pre-flight decision.
+
+## What people and agents do together
+
+The person grants a bounded workspace and sees every scope and proposed change. Codex uses the same page's WebMCP tools to scan, inspect the declared tool surface, ask for the evidence behind a finding, propose hardening, and verify the post-change state. The person chooses the exact action; MCPation makes a sibling backup before a supported write.
+
+This is materially better than a generic report because the workflow ends in a safe, observable decision: **ready, review, or pause** before the next agent run.
+
+## Why WebMCP is essential
+
+The product is not a separate MCP server. Its value is the live shared surface between the user and Codex:
+
+- The page exposes precise, structured tools through top-level `document.modelContext`.
+- Tool calls update the same visible readiness gate the user is reviewing.
+- Schemas distinguish read-only inspection from a non-read-only apply action.
+- The apply action accepts only exact ids returned by the current plan, creates a backup, and returns a fresh scan.
+- No daemon, extension, companion, Gemini key, or second account is required.
+
+## Safety and scope
+
+The user selects a workspace folder; MCPation never claims whole-system access. Discovery is allowlisted and bounded. Downloaded MCP code is not executed. Package manifests are static evidence, not proof of live tools. WebMCP results omit secrets, environment values, headers, raw instructions, and full local paths. Ambiguous commands, TOML edits, policy changes, and instruction rewrites remain manual.
+
+## Demo story
+
+The repository contains `demo-workspace`, a safe fixture with:
+
+- the same filesystem MCP declared in Codex TOML and a project `.mcp.json`;
+- a disabled documentation MCP;
+- an invalid URL;
+- MCP package dependencies in `package.json`;
+- `AGENTS.md` and a Codex `SKILL.md`.
+
+The live app turns that fixture into a visible readiness score, a declared tool inventory, evidence cards, and a supervised duplicate-cleanup plan. A direct-access browser can demonstrate backup, apply, and verification; the embedded Codex browser can still demonstrate the full discovery/plan flow in its read-only import mode.
+
+## Implementation notes
+
+- React + Vite + TypeScript.
+- `src/codex-analysis.ts` enriches deterministic MCP parsing with workspace artifact, package, instruction-chain, and readiness analysis.
+- `src/mcp-files.ts` owns native browser permission, bounded discovery, import fallback, backups, writes, and rescans.
+- `src/mcpation.ts` registers the WebMCP surface and validates tool arguments.
+- `scripts/mcpation-tests.ts` covers parsing, redaction, package/instruction discovery, readiness, and write-input validation.
+
+## Judging alignment
+
+- **WebMCP leverage:** nine meaningful tools, precise schemas, explicit annotations, and a real apply/verify loop.
+- **Execution:** hosted Vite app, responsive UI, deterministic fixture, tests, build, and verification command.
+- **Potential impact:** a specific pre-flight problem for people who use multiple MCPs and Codex instructions.
+- **Creativity and ambition:** treats an agent's tool/instruction surface as something a human can audit and harden together, rather than another passive settings page.

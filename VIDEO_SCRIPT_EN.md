@@ -1,16 +1,25 @@
-# MCPation demo — 2 minutes 20 seconds
+# MCPation demo — 2 minutes 15 seconds
 
-The video should be public, under three minutes, narrated in neutral English, and begin with the working agent/tool flow. Do not record setup, loading, or live typing.
+Use a public recording with audio. Keep the live app and Codex interaction visible from the first second.
 
-| Time | Screen action | Narration |
+| Time | Visual | Narration |
 | --- | --- | --- |
-| 0:00–0:14 | Start on MCPation after selecting the environment folder. In Codex, show `mcpation_scan_environment` and the dashboard inventory. | “MCPation gives Codex a safe, read-only view of the MCP configuration already on your machine, directly from a browser-selected folder.” |
-| 0:14–0:32 | Show the registered seven WebMCP tools and Codex calling `mcpation_get_findings`. | “Nothing was installed. The page parses known config paths locally, while WebMCP lets Codex inspect findings, coverage, access scope, and a safe cleanup plan.” |
-| 0:32–0:52 | Highlight an MCP issue and the glow-up recommendations. | “MCPation turns scattered editor files into concrete, evidence-based next steps. A recommendation is never an automatic install or configuration change.” |
-| 0:52–1:13 | Open **Review cleanup** and show the supervised proposal list. | “Cleanup is never blind. MCPation separates deterministic JSON cleanup from shell, policy, and compatibility decisions that need a human.” |
-| 1:13–1:31 | Show the disabled Apply state; do not select or apply anything. | “The demo stops at review. If a supported write is ever selected, MCPation creates a backup and asks again for confirmation.” |
-| 1:31–1:51 | Show `mcpation_get_recommendations`, then `mcpation_plan_cleanup` called from Codex and the same plan visible on the page. | “The agent and the person now share a practical plan, while the person keeps control of every configuration change.” |
-| 1:51–2:10 | Show the access-scope tool and privacy strip. | “The browser reads only known MCP paths inside the folder I granted. Codex receives sanitized findings—not tokens, environment values, full paths, or raw files.” |
-| 2:10–2:20 | Return to the dashboard. | “MCPation makes a growing Codex environment understandable, safer to clean up, and ready for the next agent run.” |
+| 0:00–0:12 | MCPation open; `9 Codex tools ready` badge visible. | “MCPation is a Codex Environment Doctor. It makes the next agent run ready, explainable, and safer.” |
+| 0:12–0:27 | Select the `demo-workspace` folder; keep the scope card visible. | “I grant one workspace, never the whole disk. The browser reads an allowlist and never executes downloaded MCP code.” |
+| 0:27–0:47 | Codex calls `codex_scan_workspace`; readiness score appears. | “WebMCP lets Codex use the same page the person is looking at. It sees MCP configuration, package evidence, AGENTS, and skills.” |
+| 0:47–1:05 | Show declared MCP surface and findings cards. | “The filesystem server is declared twice, the docs server is disabled, the legacy endpoint is invalid, and the package manifest contains MCP dependencies.” |
+| 1:05–1:20 | Codex calls `codex_explain_finding`; open **Review hardening**. | “The agent can explain the evidence behind one finding, then produce a plan that separates deterministic changes from manual review.” |
+| 1:20–1:42 | Select exactly one duplicate cleanup action. | “I choose the action. MCPation never invents a command, URL, policy, or instruction rewrite.” |
+| 1:42–2:00 | Direct mode: apply and show backup. Read-only mode: show disabled apply state. | “In a direct-access browser, MCPation creates a sibling backup, applies only that action id, and returns a fresh scan. In Codex’s read-only import mode, the same plan remains safely non-writable.” |
+| 2:00–2:15 | Codex calls `codex_verify_workspace`; readiness card updates. | “The person and the agent finish on one verified state. That is WebMCP: structured collaboration on a real workflow, not a passive dashboard.” |
 
-Record short clips and cut pauses. If no deterministic duplicate exists in the real environment, do not fabricate an applied fix; show the manual-review state and say why it is intentionally not automated.
+## Prompt shown in the video
+
+```text
+Run MCPation as a Codex pre-flight gate for this workspace.
+Call codex_scan_workspace, codex_get_tool_inventory, codex_get_instruction_chain,
+codex_get_findings, and codex_get_access_scope. Explain the highest-impact finding
+without exposing secrets, raw instructions, full paths, or package contents.
+Call codex_explain_finding, then codex_plan_hardening. Do not apply anything until
+I explicitly choose an action id.
+```
