@@ -232,7 +232,7 @@ export async function rescanEnvironment(): Promise<AnalysisResult> {
 }
 
 export async function applyBrowserFixes(actionIds: string[]): Promise<ApplyResult> {
-  if (accessMode === 'import') throw new Error('This embedded browser granted read-only folder import. Ask Codex for a host handoff to request native filesystem approval before writing.')
+  if (accessMode === 'import') throw new Error('This browser session is read-only. Use the visible approved-cleanup button to grant write access to the selected folder before writing.')
   if (accessMode === 'codex-host') throw new Error('This scan belongs to the Codex host. Ask Codex to execute the reviewed host handoff with native filesystem approval.')
   if (accessMode === 'demo') {
     if (!latestAnalysis || !demoFiles) throw new Error('Start the deterministic demo before applying a demo action.')
@@ -259,7 +259,7 @@ export async function applyBrowserFixes(actionIds: string[]): Promise<ApplyResul
     return { ...result, appliedActionIds, skippedActionIds, backups }
   }
   rootHandle ||= await restoreRoot()
-  if (!rootHandle || !(await permissionGranted(rootHandle, 'readwrite')) || !latestAnalysis) throw new Error('This browser connection is read-only. Ask Codex for the approved host handoff before applying a reviewed change.')
+  if (!rootHandle || !(await permissionGranted(rootHandle, 'readwrite')) || !latestAnalysis) throw new Error('This browser connection has no write grant. Use the visible approved-cleanup button to grant write access to the selected folder before writing.')
   const requested = [...new Set(actionIds)]
   const known = new Set(latestAnalysis.removals.map((action) => action.actionId))
   const unknown = requested.filter((actionId) => !known.has(actionId))
