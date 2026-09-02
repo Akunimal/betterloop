@@ -199,6 +199,16 @@ export async function connectEnvironment(): Promise<AnalysisResult> {
   return scanRoot(rootHandle)
 }
 
+export async function connectWritableEnvironment(): Promise<AnalysisResult> {
+  if (!fileSystemAccessSupported()) throw new Error('This browser does not expose the folder permission needed to apply a change.')
+  const handle = await window.showDirectoryPicker({ id: 'mcpation-environment-write', mode: 'readwrite' })
+  const granted = await handle.requestPermission({ mode: 'readwrite' })
+  if (granted !== 'granted') throw new Error('Write permission was not granted. Nothing was changed.')
+  rootHandle = handle
+  try { await storeRoot(rootHandle) } catch { /* The current approved session still works if private browsing blocks storage. */ }
+  return scanRoot(rootHandle)
+}
+
 export async function importEnvironment(files: FileList | File[]): Promise<AnalysisResult> {
   const selectedFiles = Array.from(files)
   if (!selectedFiles.length) throw new Error('No folder was selected.')

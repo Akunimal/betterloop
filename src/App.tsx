@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
-import { applySupervisedFixes, buildFixPlan, getEnvironmentAccessMode, getLatestScan, getMCPationMode, registerMCPationTools, requestHostHandoff, rescanConnectedEnvironment, restoreConnectedEnvironment, startImportedSession, toolNames, type ScanResult } from './mcpation'
+import { approveAndApplyBrowserFixes, applySupervisedFixes, buildFixPlan, getEnvironmentAccessMode, getLatestScan, getMCPationMode, registerMCPationTools, rescanConnectedEnvironment, restoreConnectedEnvironment, startImportedSession, toolNames, type ScanResult } from './mcpation'
 import './mcpation.css'
 
 function readinessClass(scan: ScanResult | null): string {
@@ -17,7 +17,6 @@ export default function App() {
   const [baseline, setBaseline] = useState<ScanResult | null>(null)
   const [trail, setTrail] = useState<Array<{ label: string; detail: string; state: 'done' | 'active' }>>([])
   const [celebrating, setCelebrating] = useState(false)
-  const [handoffReady, setHandoffReady] = useState(false)
   const folderInput = useRef<HTMLInputElement>(null)
   const baselineScore = useRef<number | null>(null)
   const webmcpMode = getMCPationMode()
@@ -85,20 +84,12 @@ export default function App() {
 
   const toggleFix = (id: string) => setSelectedFixes((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id])
 
-  const stageHostHandoff = () => {
-    if (!selectedFixes.length) return
-    requestHostHandoff('apply', selectedFixes)
-    setHandoffReady(true)
-    record('Your choice is ready', `${selectedFixes.length} selected change(s) are ready for your approval.`)
-    setMessage('Your selected change is ready. Codex will ask only for the permission it needs, make a backup, and bring the result back here.')
-  }
-
   const applyFixes = async () => {
-    if (!selectedFixes.length || !['direct', 'demo'].includes(getEnvironmentAccessMode() || '')) return
+    if (!selectedFixes.length) return
     if (!window.confirm(`Back up and apply ${selectedFixes.length} reviewed hardening change${selectedFixes.length === 1 ? '' : 's'}?`)) return
     setBusy(true)
     try {
-      const result = await applySupervisedFixes(selectedFixes)
+      const result = ['direct', 'demo'].includes(getEnvironmentAccessMode() || '') ? await applySupervisedFixes(selectedFixes) : await approveAndApplyBrowserFixes(selectedFixes)
       setScan(result)
       setSelectedFixes([])
       setShowPlan(false)
@@ -127,7 +118,7 @@ export default function App() {
         <h2>{scan ? scan.scope.root : 'Start with one workspace'}</h2>
         <input ref={folderInput} type="file" multiple hidden onChange={(event) => void importFolder(event.currentTarget.files)} {...({ webkitdirectory: '' } as { webkitdirectory: string })} />
         <button className="primary-button" onClick={() => void scanNow()} disabled={busy}>{busy ? 'Analyzing workspace…' : scan ? 'Rescan workspace' : 'Choose workspace folder'} <b>→</b></button>
-        <small>{scan?.scope.mode === 'codex-host' ? 'Codex is checking the workspace you approved; only the agreed summary comes back here.' : 'Choose the same folder that is open in Codex. This first check is read-only; nothing runs and nothing changes.'} It never looks outside the workspace you chose.</small>
+        <small>{scan?.scope.mode === 'codex-host' ? 'Codex is checking the workspace you approved; only the agreed summary comes back here.' : 'This first check is read-only; nothing runs and nothing changes.'} It never looks outside the workspace you chose.</small>
       </aside>
     </section>
 
@@ -144,21 +135,20 @@ export default function App() {
 
     {!scan ? <section className="empty-state">
       <div className="empty-icon">◎</div>
-      <div><p className="kicker">ONE WORKSPACE · READ ONLY</p><h2>Choose the exact workspace open in Codex.</h2><p>MCPation only reads the setup files that matter. If you choose a different folder, you can still review it here, but Codex cannot apply a real fix until that same folder is open as its workspace.</p></div>
+      <div><p className="kicker">ONE WORKSPACE · READ ONLY</p><h2>Choose a workspace you want to understand.</h2><p>MCPation only reads the setup files that matter. When you approve a supported fix later, the browser asks separately for permission to write only to the folder you choose.</p></div>
       <div className="empty-steps"><span><b>01</b> Choose workspace</span><span><b>02</b> See what needs attention</span><span><b>03</b> Decide what to do</span></div>
     </section> : <>
       <section className="readiness-row">
         <div className={'score-card ' + readinessClass(scan)}><div className="score-ring"><strong>{scan.readiness.value}</strong><small>/100</small></div><div><p className="kicker">READYNESS CHECK</p><h2>{scan.readiness.label === 'ready' ? 'Good to go' : scan.readiness.label === 'needs-attention' ? 'Worth a quick review' : 'Pause before the next run'}</h2><p>{scan.readiness.signals.join(' · ')}</p></div></div>
-        <div className="scope-card"><p className="kicker">WHAT WE CHECKED</p><strong>{scan.scope.root}</strong><span>{scan.scope.mode === 'demo' ? 'Safe demo · in memory' : scan.scope.mode === 'codex-host' ? 'Checked with your Codex approval' : 'Read-only browser check'} · {scan.sources.length} config source{scan.sources.length === 1 ? '' : 's'}</span><small>{scan.scope.mode === 'import' ? 'To apply a real fix, open this exact folder as the Codex workspace first.' : 'Codex sees a safe summary, not your raw files.'}</small></div>
+        <div className="scope-card"><p className="kicker">WHAT WE CHECKED</p><strong>{scan.scope.root}</strong><span>{scan.scope.mode === 'demo' ? 'Safe demo · in memory' : scan.scope.mode === 'codex-host' ? 'Checked with your Codex approval' : 'Read-only browser check'} · {scan.sources.length} config source{scan.sources.length === 1 ? '' : 's'}</span><small>{scan.scope.mode === 'import' ? 'When you approve a fix, choose this folder again in the browser’s write-permission dialog.' : 'Codex sees a safe summary, not your raw files.'}</small></div>
       </section>
 
       <section className="dashboard-heading"><div><p className="kicker">AGENT-READY INVENTORY</p><h2>{showPlan ? 'Choose fixes and approve them' : 'What Codex can act on'}</h2></div><button className="plan-button" onClick={() => setShowPlan(!showPlan)}>{showPlan ? 'Back to inventory' : `Fix findings — supervised · ${plan?.items.length || 0}`}</button></section>
 
       {showPlan ? <section className="fix-plan">
-        <div className="plan-intro"><strong>Every write is explicit.</strong><span>Only deterministic JSON duplicate cleanup can be applied. Commands, TOML, policy, and instruction changes remain manual. If the page is read-only, Codex can request the host handoff for this exact plan.</span></div>
+        <div className="plan-intro"><strong>Every write is explicit.</strong><span>Only deterministic JSON duplicate cleanup can be applied. Commands, TOML, policy, and instruction changes remain manual. Before a real write, the browser asks for your folder permission and MCPation creates a backup.</span></div>
         {plan?.items.length ? plan.items.map((item) => <article key={item.id}><span className={item.canApply ? 'apply-label' : 'manual-label'}>{item.canApply ? 'BACKUP + REVIEW' : 'MANUAL REVIEW'}</span><b>{item.title}</b><p>{item.detail}</p>{item.canApply && <label className="fix-choice"><input type="checkbox" checked={selectedFixes.includes(item.id)} onChange={() => toggleFix(item.id)} /> Include this exact change</label>}</article>) : <div className="plan-empty">No hardening action proposed for this workspace.</div>}
-        {handoffReady && environmentMode !== 'demo' && <div className="handoff-ready"><strong>Approval handoff is ready.</strong><span>Codex now requests write access only for your selected action, creates the backup, applies it, and sends the refreshed snapshot back for verification.</span></div>}
-        <div className="fix-plan-actions"><small>{environmentMode === 'demo' ? 'Demo mode changes memory only; no disk file is touched.' : 'Choose exact fixes, then request Codex approval. The page cannot silently write your workspace.'}</small><button disabled={!selectedFixes.length || busy} onClick={() => environmentMode === 'demo' ? void applyFixes() : stageHostHandoff()}>{environmentMode === 'demo' ? 'Apply demo change' : 'Request Codex approval'} {selectedFixes.length || ''}</button></div>
+        <div className="fix-plan-actions"><small>{environmentMode === 'demo' ? 'Demo mode changes memory only; no disk file is touched.' : 'Choose exact fixes, then approve them. The browser will ask you to select and grant write access to the folder before anything changes.'}</small><button disabled={!selectedFixes.length || busy} onClick={() => void applyFixes()}>{environmentMode === 'demo' ? 'Apply demo change' : 'Approve, grant write access & apply'} {selectedFixes.length || ''}</button></div>
       </section> : <section className="dashboard-grid">
         <div className="panel inventory-panel"><div className="panel-title"><strong>Declared MCP surface</strong><span>{scan.toolSurface.length}</span></div><p className="panel-note">Configured servers and package evidence. Static declarations are not live runtime proof.</p><div className="inventory">{scan.toolSurface.length ? scan.toolSurface.map((entry) => <article key={entry.id}><div><strong>{entry.name}</strong><small>{entry.kind.replace('-', ' ')} · {entry.confidence} confidence</small></div><div className="server-meta"><span>{entry.source}</span><small>{entry.target || entry.declaredIn}</small></div></article>) : <div className="all-clear"><b>No MCP signal found.</b><span>Connect a project with a Codex config or MCP package manifest.</span></div>}</div></div>
         <div className="panel findings-panel"><div className="panel-title"><strong>Readiness findings</strong><span>{issues}</span></div><div className="findings">{scan.findings.map((finding) => <article key={finding.id} className={finding.severity}><span>{finding.severity}</span><strong>{finding.title}</strong><p>{finding.detail}</p></article>)}</div></div>
