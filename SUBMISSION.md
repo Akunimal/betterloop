@@ -24,6 +24,12 @@ The product is not a separate MCP server. Its value is the live shared surface b
 - The apply action accepts only exact ids returned by the current plan and returns a precise Codex host handoff that requires native approval, backup, and a fresh snapshot.
 - No daemon, extension, companion, Gemini key, or second account is required.
 
+## The broader concept
+
+MCPation is also a proof of concept for a wider WebMCP idea: an agent-native capability does not always need to be installed as a separate MCP server, desktop extension, or local daemon. A web page can expose a bounded, structured, visible tool surface exactly where a person is already making decisions. Here that surface is workspace readiness and supervised cleanup; the same pattern could expand to onboarding, compliance checks, migration review, release gates, data exploration, or any workflow where people need to see and approve what an agent does.
+
+WebMCP does not replace every installed MCP. It makes a complementary class of experiences possible: lightweight, browser-native tools that share state with the person, preserve explicit permissions, and require no setup beyond opening the page.
+
 ## Safety and scope
 
 The user selects a workspace folder or asks Codex to perform the host handoff; MCPation never claims whole-system access. Discovery is allowlisted and bounded. Downloaded MCP code is not executed. Package manifests are static evidence, not proof of live tools. WebMCP results omit secrets, environment values, headers, raw instructions, and full local paths. Ambiguous commands, TOML edits, policy changes, and instruction rewrites remain manual.

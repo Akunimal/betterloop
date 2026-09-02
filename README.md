@@ -88,3 +88,7 @@ rescan and verification
 ```
 
 The implementation is client-side (`src/codex-analysis.ts`, `src/mcp-files.ts`) and uses no daemon, browser extension, local companion, Gemini key, or remote model call.
+
+## A browser-native MCP pattern
+
+MCPation is a concept for a broader class of agent experiences: not every useful MCP-like capability needs installation as a server, extension, or local daemon. WebMCP lets a page publish a scoped tool surface beside the human UI, so an agent can collaborate in the same state without a separate setup step. This project applies that pattern to Codex readiness; the same approach can extend to review gates, onboarding, compliance, migrations, and other supervised workflows.
