@@ -121,6 +121,7 @@ class MemoryDirectory {
   kind = 'directory' as const
   readonly entries = new Map<string, MemoryDirectory | MemoryFile>()
   requests = 0
+  writeGranted = false
   name: string
   constructor(name: string) { this.name = name }
   async *values() { yield* this.entries.values() }
@@ -136,8 +137,8 @@ class MemoryDirectory {
     if (options?.create) { const file = new MemoryFile(name, ''); this.entries.set(name, file); return file }
     throw new Error(`Missing file ${name}`)
   }
-  async queryPermission() { return 'granted' as const }
-  async requestPermission() { this.requests += 1; return 'granted' as const }
+  async queryPermission(options?: { mode?: 'read' | 'readwrite' }) { return options?.mode === 'readwrite' && !this.writeGranted ? 'prompt' as const : 'granted' as const }
+  async requestPermission(options?: { mode?: 'read' | 'readwrite' }) { this.requests += 1; if (options?.mode === 'readwrite') this.writeGranted = true; return 'granted' as const }
 }
 
 const browserRoot = new MemoryDirectory('browser-workspace')
@@ -207,6 +208,14 @@ const nativeTools: any[] = []
 ;(globalThis as any).window = { dispatchEvent: () => true }
 ;(globalThis as any).document = { modelContext: { registerTool: async (tool: any) => { nativeTools.push(tool) }, getTools: () => nativeTools } }
 const mcpation = await import('../src/mcpation.ts')
+const uiPlan = mcpation.buildFixPlan(mcpation.getLatestScan()!)
+const uiAction = uiPlan.items.find((item: { canApply: boolean }) => item.canApply)
+assert.ok(uiAction)
+const requestsBeforeUiApproval = browserRoot.requests
+browserRoot.writeGranted = false
+await mcpation.applySupervisedFixes([uiAction.id])
+assert.equal(browserRoot.requests, requestsBeforeUiApproval + 1)
+assert.equal(Object.keys(JSON.parse(browserMcp.text()).mcpServers).length, 1)
 const registeredNames = await mcpation.registerMCPationTools()
 assert.equal(registeredNames.length, 12)
 assert.equal(mcpation.getMCPationMode(), 'native')

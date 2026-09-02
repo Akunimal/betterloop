@@ -33,6 +33,10 @@ export async function rescanConnectedEnvironment(): Promise<ScanResult> {
 }
 
 export async function applySupervisedFixes(selectedActionIds: string[]): Promise<ScanResult> {
+  // A direct browser connection may have been restored with read permission
+  // only. The approval click is the user gesture that is allowed to request
+  // the one-time read/write grant before the deterministic cleanup runs.
+  if (getAccessMode() !== 'demo') await grantWriteAccessToConnectedEnvironment()
   return (await applyBrowserFixes(selectedActionIds)).scan
 }
 
@@ -40,8 +44,7 @@ export const listBackups = listBrowserBackups
 export const restoreBackup = restoreBrowserBackup
 
 export async function approveAndApplyBrowserFixes(selectedActionIds: string[]): Promise<ScanResult> {
-  if (getAccessMode() !== 'demo') await grantWriteAccessToConnectedEnvironment()
-  return (await applyBrowserFixes(selectedActionIds)).scan
+  return applySupervisedFixes(selectedActionIds)
 }
 
 export function requestHostHandoff(operation: 'scan' | 'apply', actionIds: string[] = []) {
