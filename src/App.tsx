@@ -110,7 +110,8 @@ export default function App() {
     <section className="hero">
       <div>
         <p className="kicker">CODEX WORKSPACE PRE-FLIGHT</p>
-        <h1>Know what Codex<br /><em>will inherit.</em></h1>
+        <h1>Emancipate your<br /><em>workspace.</em></h1>
+        <p className="hero-punch">From what no longer serves it.</p>
         <p className="lede">Choose one workspace. MCPation looks at the MCP setup, packages, AGENTS, and skills Codex will see — then helps you decide what is ready and what deserves a closer look.</p>
       </div>
       <aside className="connect-card">
@@ -157,6 +158,6 @@ export default function App() {
       </section>}
     </>}
 
-    <footer><strong>WebMCP-native.</strong> Codex and the user share the same visible state. Host-only work goes through Codex's native permission flow; no daemon, extension, Gemini key, or hidden full-disk access.</footer>
+    <footer><strong>WebMCP-native.</strong> Codex and the user share the same visible state. Supported cleanup uses a separate browser write grant for the folder you choose; no daemon, extension, Gemini key, or hidden full-disk access.</footer>
   </main>
 }

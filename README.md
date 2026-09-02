@@ -1,6 +1,6 @@
 # MCPation — Codex Environment Doctor
 
-**Make Codex ready before it runs.** MCPation is a browser-native WebMCP app that turns one explicitly granted workspace into an explainable readiness gate for MCP configuration, downloaded MCP package signals, `AGENTS.md`, and Codex skills.
+**Make Codex ready before it runs.** MCPation is a browser-native WebMCP app that turns one explicitly granted workspace into an explainable readiness gate for MCP configuration, downloaded MCP package signals, `AGENTS.md`, and Codex skills. **Emancipate your workspace from what no longer serves it.**
 
 The agent and the person see the same state: Codex can scan, explain a finding, propose hardening, request a native host capability when the page needs it, apply only an exact deterministic cleanup, and verify the result. Nothing is installed and no model/API key is needed.
 
@@ -29,7 +29,7 @@ The page registers these top-level `document.modelContext` tools when WebMCP is 
 - `codex_verify_workspace` — rescan after a change and return the new score and findings.
 - `codex_get_access_scope` — explain the exact browser-granted boundary and privacy guarantees.
 
-Read-only tools are annotated `readOnlyHint: true`. The apply tool is explicitly non-read-only and requires `actionIds` from the latest plan plus `confirm: true`; when the page cannot write, it returns the host handoff instead of pretending to apply. It never invents commands, URLs, policy, or instruction text.
+Read-only tools are annotated `readOnlyHint: true`. The apply tool is explicitly non-read-only and requires `actionIds` from the latest plan plus `confirm: true`; its tool response is a precise Codex host-handoff contract because a tool call cannot open a browser permission dialog. The visible browser flow can apply a supported cleanup after the person explicitly grants write access to the selected folder. It never invents commands, URLs, policy, or instruction text.
 
 ## What is scanned
 
@@ -43,13 +43,13 @@ Downloaded MCP code is never executed. Package entries are static evidence; they
 
 ## Permission model
 
-A normal web page starts with no filesystem access. The visible **Select workspace folder** action uses a browser read-only folder import and analyzes only the allowlisted files. It never requests browser write access. Codex can scan its current workspace through `codex_request_host_handoff`, ask its own host for bounded read approval, and submit an allowlisted snapshot back to this page. Any approved write follows the same host handoff and requires a sibling backup plus a fresh snapshot.
+A normal web page starts with no filesystem access. The visible **Choose workspace folder** action uses a browser read-only folder import and analyzes only allowlisted files. When the person selects an exact supported cleanup, **Approve, grant write access & apply** opens a second native browser dialog. The person chooses the same folder and explicitly grants `readwrite`; MCPation creates a sibling backup, applies only the checked JSON cleanup, and rescans. The page cannot silently reuse the first read-only selection or access another folder.
 
 MCPation registers native `document.modelContext` tools in supported WebMCP browser contexts, including ChatGPT's in-app browser and Chrome 149+ with WebMCP enabled. When that API is unavailable, it shows a local preview; the preview does not advertise native tools.
 
 For Chrome, open `chrome://flags/#enable-webmcp-testing`, enable it, and relaunch. The deployed app sends `Origin-Agent-Cluster: ?1` and `Permissions-Policy: tools=(self)`, which satisfy the WebMCP page requirements for this top-level, same-origin app. Chrome's Model Context Tool Inspector can list and manually invoke the registered tools.
 
-This is the honest WebMCP boundary: WebMCP exposes page actions to Codex, while Codex's host permission flow handles operations the page cannot perform. The page never invokes host permissions or claims arbitrary operating-system access.
+This is the honest WebMCP boundary: WebMCP exposes the page's scoped, visible actions to Codex. Browser File System Access handles the optional, human-initiated write grant; Codex can independently scan and verify the shared result. The page never claims arbitrary operating-system access.
 
 ## Try the deterministic demo
 
@@ -58,7 +58,8 @@ The repository includes [`demo-workspace`](demo-workspace) with safe, intentiona
 1. Open the deployed app: <https://mcpation.vercel.app/> in Codex/ChatGPT's in-app browser, or in Chrome 149+ with the WebMCP testing flag enabled.
 2. Choose `demo-workspace` in the folder picker/import flow.
 3. Let Codex call `codex_scan_workspace`, `codex_get_tool_inventory`, `codex_get_findings`, and `codex_plan_hardening`.
-4. Review the duplicate proposal. Call `codex_request_host_handoff` with `operation: "apply"`; after native approval, submit the refreshed files with `codex_submit_host_snapshot` and call `codex_verify_workspace`.
+4. Review the duplicate proposal, select it, and click **Approve, grant write access & apply**. In the browser dialog select the same folder and approve the write grant. MCPation makes a sibling backup, applies the exact JSON cleanup, and rescans.
+5. Ask Codex to call `codex_verify_workspace` and report the current readiness, remaining findings, and what MCPation changed.
 
 ## Local development
 
@@ -73,16 +74,16 @@ npm run verify
 ## Architecture
 
 ```text
-visible folder grant or Codex host approval
+visible browser folder grant
         ↓
 bounded browser file reader
         ↓
 deterministic Codex readiness analyzer
         ↓
 document.modelContext WebMCP tools
-        ↘ host handoff → Codex native permission + fs/*
+        ↘ explicit browser write grant → exact JSON cleanup + sibling backup
         ↓                         ↘
-human-reviewed hardening + backup ← sanitized snapshot
+human-reviewed hardening + backup ← Codex independently verifies current result
         ↓
 rescan and verification
 ```

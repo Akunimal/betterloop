@@ -10,7 +10,7 @@ Codex workspaces quietly accumulate MCP definitions, package dependencies, `AGEN
 
 ## What people and agents do together
 
-The person grants a bounded workspace and sees every scope and proposed change. Codex uses the same page's WebMCP tools to scan, inspect the declared tool surface, ask for the evidence behind a finding, propose hardening, request a native host capability when browser access is insufficient, and verify the post-change state. The person chooses the exact action; MCPation or Codex's approved host path makes a sibling backup before a supported write.
+The person grants a bounded workspace and sees every scope and proposed change. Codex uses the same page's WebMCP tools to scan, inspect the declared tool surface, ask for the evidence behind a finding, propose hardening, and independently verify the post-change state. The person chooses the exact action; MCPation then requests a separate, explicit browser write grant for that same folder, makes a sibling backup, applies only the supported JSON cleanup, and rescans.
 
 This is materially better than a generic report because the workflow ends in a safe, observable decision: **ready, review, or pause** before the next agent run.
 
@@ -20,8 +20,8 @@ The product is not a separate MCP server. Its value is the live shared surface b
 
 - The page exposes precise, structured tools through top-level `document.modelContext`.
 - Tool calls update the same visible readiness gate the user is reviewing.
-- Schemas distinguish read-only inspection, a host-capability handshake, snapshot submission, and a non-read-only apply action.
-- The apply action accepts only exact ids returned by the current plan and returns a precise Codex host handoff that requires native approval, backup, and a fresh snapshot.
+- Schemas distinguish read-only inspection, a host-capability fallback contract, snapshot submission, and a non-read-only apply action.
+- The browser apply flow accepts only exact ids returned by the current plan and requires a separate native browser permission grant, a sibling backup, and a fresh rescan. A WebMCP tool call cannot silently trigger that browser prompt.
 - No daemon, extension, companion, Gemini key, or second account is required.
 
 ## The broader concept
@@ -32,7 +32,7 @@ WebMCP does not replace every installed MCP. It makes a complementary class of e
 
 ## Safety and scope
 
-The user selects a workspace folder or asks Codex to perform the host handoff; MCPation never claims whole-system access. Discovery is allowlisted and bounded. Downloaded MCP code is not executed. Package manifests are static evidence, not proof of live tools. WebMCP results omit secrets, environment values, headers, raw instructions, and full local paths. Ambiguous commands, TOML edits, policy changes, and instruction rewrites remain manual.
+The user selects a workspace folder; MCPation never claims whole-system access. Discovery is allowlisted and bounded. A supported write requires the user to select that folder again in the browser's native `readwrite` dialog. Downloaded MCP code is not executed. Package manifests are static evidence, not proof of live tools. WebMCP results omit secrets, environment values, headers, raw instructions, and full local paths. Ambiguous commands, TOML edits, policy changes, and instruction rewrites remain manual.
 
 ## Demo story
 
@@ -44,7 +44,7 @@ The repository contains `demo-workspace`, a safe fixture with:
 - MCP package dependencies in `package.json`;
 - `AGENTS.md` and a Codex `SKILL.md`.
 
-The live app turns that fixture into a visible readiness score, a declared tool inventory, evidence cards, and a supervised duplicate-cleanup plan. The browser's selected-folder view is read-only; Codex requests the host handoff, applies the exact JSON action with native filesystem approval, submits a sanitized snapshot, and verifies the same page state.
+The live app turns that fixture into a visible readiness score, a declared tool inventory, evidence cards, and a supervised duplicate-cleanup plan. The initial browser selection is read-only; after the user checks the exact JSON action, a second browser permission dialog grants write access only to the selected folder. MCPation backs up, applies, and rescans; Codex then verifies the same page state.
 
 ## Implementation notes
 
@@ -56,7 +56,7 @@ The live app turns that fixture into a visible readiness score, a declared tool 
 
 ## Judging alignment
 
-- **WebMCP leverage:** twelve meaningful tools, including a deterministic workspace evidence graph, precise schemas, explicit annotations, a host handoff, and a real apply/verify loop.
+- **WebMCP leverage:** twelve meaningful tools, including a deterministic workspace evidence graph, precise schemas, explicit annotations, a host fallback contract, and a real browser apply/agent-verify loop.
 - **Execution:** hosted Vite app, responsive UI, deterministic fixture, tests, build, and verification command.
 - **Potential impact:** a specific pre-flight problem for people who use multiple MCPs and Codex instructions.
 - **Creativity and ambition:** treats an agent's tool/instruction surface as something a human can audit and harden together, rather than another passive settings page.
