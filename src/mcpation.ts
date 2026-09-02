@@ -1,11 +1,11 @@
-import { applyBrowserFixes, connectEnvironment, fileSystemAccessSupported, getAccessMode, getLatestAnalysis, importEnvironment, ingestHostSnapshot, rescanEnvironment, restoreEnvironmentAccess, startDemoEnvironment } from './mcp-files'
+import { applyBrowserFixes, connectEnvironment, fileSystemAccessSupported, getAccessMode, getLatestAnalysis, importEnvironment, ingestHostSnapshot, rescanEnvironment, restoreEnvironmentAccess, startDemoEnvironment } from './mcp-files.ts'
 import { buildHostApplyHandoff, buildHostScanHandoff } from './codex-handoff.ts'
-import { parseCleanupToolInput, parseHostHandoffInput, parseHostSnapshotInput, parseRequiredId } from './mcp-tool-input'
-import type { ScanResult } from './mcp-types'
-import { getModelContext, getWebMCPMode } from './webmcp/polyfill'
-import type { WebMCPTool } from './webmcp-types'
+import { parseCleanupToolInput, parseHostHandoffInput, parseHostSnapshotInput, parseRequiredId } from './mcp-tool-input.ts'
+import type { ScanResult } from './mcp-types.ts'
+import { getModelContext, getWebMCPMode } from './webmcp/polyfill.ts'
+import type { WebMCPTool } from './webmcp-types.ts'
 
-export type { ScanResult } from './mcp-types'
+export type { ScanResult } from './mcp-types.ts'
 
 let registered = false
 

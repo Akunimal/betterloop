@@ -1,5 +1,5 @@
-import type { ConfigDocument } from './mcp-types'
-import type { WorkspaceFile } from './codex-analysis'
+import type { ConfigDocument } from './mcp-types.ts'
+import type { WorkspaceFile } from './codex-analysis.ts'
 
 export const DEMO_WORKSPACE_FILES: WorkspaceFile[] = [
   {

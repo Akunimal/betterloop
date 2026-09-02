@@ -1,4 +1,4 @@
-import type { WebMCPExecuteOptions, WebMCPTool } from '../webmcp-types'
+import type { WebMCPExecuteOptions, WebMCPTool } from '../webmcp-types.ts'
 
 export interface ModelContextLike {
   registerTool: (tool: WebMCPTool, options?: { signal?: AbortSignal; exposedTo?: string[] }) => Promise<unknown> | unknown

@@ -109,4 +109,26 @@ assert.equal(matchSourceForPath('.codex/config.toml')?.source.label, 'Codex')
 assert.equal(matchSourceForPath('Home/.mcp.json')?.source.label, 'Codex workspace MCP')
 assert.equal(matchSourceForPath('Home/Documents/notes.json'), null)
 
+const nativeTools: any[] = []
+;(globalThis as any).window = { dispatchEvent: () => true }
+;(globalThis as any).document = { modelContext: { registerTool: async (tool: any) => { nativeTools.push(tool) }, getTools: () => nativeTools } }
+const mcpation = await import('../src/mcpation.ts')
+const registeredNames = await mcpation.registerMCPationTools()
+assert.equal(registeredNames.length, 11)
+assert.equal(mcpation.getMCPationMode(), 'native')
+const registeredTool = (name: string) => nativeTools.find((tool) => tool.name === name)
+assert.equal((await registeredTool('codex_request_host_handoff').execute({ operation: 'scan' })).protocol, 'mcpation-codex-host/v1')
+const submitted = await registeredTool('codex_submit_host_snapshot').execute({ files: DEMO_WORKSPACE_FILES })
+assert.equal(submitted.scope.mode, 'codex-host')
+const registeredPlan = await registeredTool('codex_plan_hardening').execute({})
+const registeredActionId = registeredPlan.items.find((item: { canApply: boolean }) => item.canApply)?.id
+assert.ok(registeredActionId)
+const registeredApply = await registeredTool('codex_apply_hardening').execute({ actionIds: [registeredActionId], confirm: true })
+assert.equal(registeredApply.handoff.operation, 'apply')
+assert.equal(registeredApply.handoff.actions[0].actionId, registeredActionId)
+const verified = await registeredTool('codex_verify_workspace').execute({})
+assert.equal(verified.readiness.value, submitted.readiness.value)
+delete (globalThis as any).window
+delete (globalThis as any).document
+
 console.log('MCPation browser analysis tests passed.')

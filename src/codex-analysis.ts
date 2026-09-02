@@ -1,5 +1,5 @@
 import { analyzeDocuments } from './mcp-analysis.ts'
-import type { AnalysisResult, ConfigDocument, Finding, InstructionEntry, ReadinessScore, ScanResult, ToolSurfaceEntry, WorkspaceArtifact, WorkspaceArtifactKind } from './mcp-types'
+import type { AnalysisResult, ConfigDocument, Finding, InstructionEntry, ReadinessScore, ScanResult, ToolSurfaceEntry, WorkspaceArtifact, WorkspaceArtifactKind } from './mcp-types.ts'
 
 export interface WorkspaceFile { path: string; text: string }
 
