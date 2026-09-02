@@ -121,7 +121,7 @@ export default function App() {
         <input ref={folderInput} type="file" multiple hidden onChange={(event) => void importFolder(event.currentTarget.files)} {...({ webkitdirectory: '' } as { webkitdirectory: string })} />
         <button className="primary-button" onClick={() => void scanNow()} disabled={busy}>{busy ? 'Auditing…' : scan ? 'Rescan workspace' : directAccess ? 'Connect workspace folder' : 'Select workspace folder'} <b>→</b></button>
         {!scan && <button className="demo-button" onClick={loadDemo} disabled={busy}>Try deterministic demo <span>↗</span></button>}
-        <small>{directAccess ? 'Direct browser read/write after explicit folder grant.' : 'Embedded browser import is read-only.'} Never scans outside the selected scope.</small>
+        <small>{scan?.scope.mode === 'demo' ? 'Deterministic demo only; no disk access.' : scan?.scope.mode === 'import' ? 'Embedded browser import is read-only.' : directAccess ? 'Direct browser read/write after explicit folder grant.' : 'Embedded browser import is read-only.'} Never scans outside the selected scope.</small>
       </aside>
     </section>
 
