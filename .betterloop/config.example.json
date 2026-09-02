@@ -1,7 +1,0 @@
-{
-  "enabled": true,
-  "askIfDone": true,
-  "autoContinue": true,
-  "quotaContinuation": true,
-  "quotaAssumptionHours": 5
-}
