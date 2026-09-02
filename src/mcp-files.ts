@@ -94,7 +94,7 @@ function configDocumentsForFiles(files: WorkspaceFile[], manualOnly: boolean): C
 function isInterestingWorkspaceFile(path: string): boolean {
   const normalizedPath = path.replace(/\\/g, '/').toLowerCase()
   const name = normalizedPath.split('/').pop() || ''
-  return Boolean(matchCodexSourceForPath(normalizedPath) || WORKSPACE_FILE_NAMES.has(name) || (name === 'skill.md' && normalizedPath.includes('/skills/')))
+  return Boolean(matchCodexSourceForPath(normalizedPath) || WORKSPACE_FILE_NAMES.has(name) || (name === 'skill.md' && (normalizedPath.includes('/skills/') || normalizedPath.startsWith('skills/'))))
 }
 
 async function readWorkspaceFiles(root: FileSystemDirectoryHandle): Promise<WorkspaceFile[]> {
