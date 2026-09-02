@@ -58,7 +58,7 @@ The repository includes [`demo-workspace`](demo-workspace) with safe, intentiona
 1. Open the deployed app: <https://mcpation.vercel.app/> in Codex/ChatGPT's in-app browser, or in Chrome 149+ with the WebMCP testing flag enabled.
 2. Choose `demo-workspace` in the folder picker/import flow.
 3. Let Codex call `codex_scan_workspace`, `codex_get_tool_inventory`, `codex_get_findings`, and `codex_plan_hardening`.
-4. In Chrome, open `https://mcpation.vercel.app/?browser=chrome`. Review the duplicate proposal, select it, and click **Approve & apply**. MCPation uses the already granted workspace only after this explicit confirmation, saves the original in `.mcpation-backups/`, updates an existing `.gitignore` if needed, applies the exact JSON cleanup, and rescans.
+4. In the Codex embed, review the duplicate proposal, select it, and click **Request Codex approval**. Ask Codex to execute the exact handoff in its current approved workspace, submit the refreshed snapshot, and verify it. For a direct browser write, Chrome also supports `https://mcpation.vercel.app/?browser=chrome` with **Approve & apply**.
 5. Ask Codex to call `codex_verify_workspace` and report the current readiness, remaining findings, and what MCPation changed.
 
 ## Local development

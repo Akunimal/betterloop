@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
-import { approveAndApplyBrowserFixes, applySupervisedFixes, buildFixPlan, getEnvironmentAccessMode, getLatestScan, getMCPationMode, registerMCPationTools, rescanConnectedEnvironment, restoreConnectedEnvironment, startConsentSession, startImportedSession, supportsDirectDiskAccess, toolNames, type ScanResult } from './mcpation'
+import { approveAndApplyBrowserFixes, applySupervisedFixes, buildFixPlan, getEnvironmentAccessMode, getLatestScan, getMCPationMode, registerMCPationTools, requestHostHandoff, rescanConnectedEnvironment, restoreConnectedEnvironment, startConsentSession, startImportedSession, supportsDirectDiskAccess, toolNames, type ScanResult } from './mcpation'
 import './mcpation.css'
 
 function readinessClass(scan: ScanResult | null): string {
@@ -108,7 +108,14 @@ export default function App() {
     if (!window.confirm(`Back up and apply ${selectedFixes.length} reviewed hardening change${selectedFixes.length === 1 ? '' : 's'}?`)) return
     setBusy(true)
     try {
-      const result = ['direct', 'demo'].includes(getEnvironmentAccessMode() || '') ? await applySupervisedFixes(selectedFixes) : await approveAndApplyBrowserFixes(selectedFixes)
+      const currentMode = getEnvironmentAccessMode()
+      if (currentMode === 'import' || currentMode === 'codex-host') {
+        const handoff = requestHostHandoff('apply', selectedFixes)
+        setMessage('Codex approval is ready. Ask Codex to execute this handoff in the current workspace, then submit the snapshot and verify it.')
+        record('Codex approval request ready', `${handoff.actions.length} exact change(s) · native workspace permission required.`, 'active')
+        return
+      }
+      const result = currentMode === 'direct' || currentMode === 'demo' ? await applySupervisedFixes(selectedFixes) : await approveAndApplyBrowserFixes(selectedFixes)
       setScan(result)
       setSelectedFixes([])
       setShowPlan(false)
@@ -160,7 +167,7 @@ export default function App() {
     </section> : <>
       <section className="readiness-row">
         <div className={'score-card ' + readinessClass(scan)}><div className="score-ring"><strong>{scan.readiness.value}</strong><small>/100</small></div><div><p className="kicker">READYNESS CHECK</p><h2>{scan.readiness.label === 'ready' ? 'Good to go' : scan.readiness.label === 'needs-attention' ? 'Worth a quick review' : 'Pause before the next run'}</h2><p>{scan.readiness.signals.join(' · ')}</p></div></div>
-        <div className="scope-card"><p className="kicker">WHAT WE CHECKED</p><strong>{scan.scope.root}</strong><span>{scan.scope.mode === 'demo' ? 'Safe demo · in memory' : scan.scope.mode === 'codex-host' ? 'Checked with your Codex approval' : scan.scope.mode === 'direct' ? 'Browser folder access' : 'Read-only browser import'} · {scan.sources.length} config source{scan.sources.length === 1 ? '' : 's'}</span><small>{scan.scope.mode === 'direct' ? 'If you approve a fix, the browser asks to elevate access for this same folder — no second folder picker.' : scan.scope.mode === 'import' ? 'This browser imported files read-only; reconnect with the browser folder picker to use supported cleanup.' : 'Codex sees a safe summary, not your raw files.'}</small></div>
+        <div className="scope-card"><p className="kicker">WHAT WE CHECKED</p><strong>{scan.scope.root}</strong><span>{scan.scope.mode === 'demo' ? 'Safe demo · in memory' : scan.scope.mode === 'codex-host' ? 'Checked with your Codex approval' : scan.scope.mode === 'direct' ? 'Browser folder access' : 'Read-only browser import'} · {scan.sources.length} config source{scan.sources.length === 1 ? '' : 's'}</span><small>{scan.scope.mode === 'direct' ? 'If you approve a fix, the browser uses this same folder — no second folder picker.' : scan.scope.mode === 'import' ? 'Codex can apply the selected action through its approved workspace handoff when this is the current Codex workspace.' : 'Codex sees a safe summary, not your raw files.'}</small></div>
       </section>
 
       <section className="dashboard-heading"><div><p className="kicker">AGENT-READY INVENTORY</p><h2>{showPlan ? 'Choose fixes and approve them' : 'What Codex can act on'}</h2></div><button className="plan-button" onClick={() => setShowPlan(!showPlan)}>{showPlan ? 'Back to inventory' : `Fix findings — supervised · ${plan?.items.length || 0}`}</button></section>
@@ -168,7 +175,7 @@ export default function App() {
       {showPlan ? <section className="fix-plan">
         <div className="plan-intro"><strong>Every write is explicit.</strong><span>Only deterministic JSON duplicate cleanup can be applied. Commands, TOML, policy, and instruction changes remain manual. Before a real write, the browser asks for your folder permission and MCPation creates a backup.</span></div>
         {plan?.items.length ? plan.items.map((item) => <article key={item.id}><span className={item.canApply ? 'apply-label' : 'manual-label'}>{item.canApply ? 'BACKUP + REVIEW' : 'MANUAL REVIEW'}</span><b>{item.title}</b><p>{item.detail}</p>{item.canApply && <label className="fix-choice"><input type="checkbox" checked={selectedFixes.includes(item.id)} onChange={() => toggleFix(item.id)} /> Include this exact change</label>}</article>) : <div className="plan-empty">No hardening action proposed for this workspace.</div>}
-        <div className="fix-plan-actions"><small>{environmentMode === 'demo' ? 'Demo mode changes memory only; no disk file is touched.' : environmentMode === 'direct' ? 'Choose exact fixes, then approve them. The browser uses this same selected folder before anything changes.' : 'Codex’s embedded browser keeps this import read-only. Open Chrome with ?browser=chrome for the one-picker apply flow.'}</small><button disabled={!selectedFixes.length || busy || (environmentMode !== 'demo' && environmentMode !== 'direct')} onClick={() => void applyFixes()}>{environmentMode === 'demo' ? 'Apply demo change' : 'Approve & apply'} {selectedFixes.length || ''}</button></div>
+        <div className="fix-plan-actions"><small>{environmentMode === 'demo' ? 'Demo mode changes memory only; no disk file is touched.' : environmentMode === 'direct' ? 'Choose exact fixes, then approve them. The browser uses this same selected folder before anything changes.' : 'This import is read-only in the page. After your confirmation, Codex can execute the exact handoff in its already approved workspace.'}</small><button disabled={!selectedFixes.length || busy} onClick={() => void applyFixes()}>{environmentMode === 'demo' ? 'Apply demo change' : environmentMode === 'direct' ? 'Approve & apply' : 'Request Codex approval'} {selectedFixes.length || ''}</button></div>
       </section> : <section className="dashboard-grid">
         <div className="panel inventory-panel"><div className="panel-title"><strong>Declared MCP surface</strong><span>{scan.toolSurface.length}</span></div><p className="panel-note">Configured servers and package evidence. Static declarations are not live runtime proof.</p><div className="inventory">{scan.toolSurface.length ? scan.toolSurface.map((entry) => <article key={entry.id}><div><strong>{entry.name}</strong><small>{entry.kind.replace('-', ' ')} · {entry.confidence} confidence</small></div><div className="server-meta"><span>{entry.source}</span><small>{entry.target || entry.declaredIn}</small></div></article>) : <div className="all-clear"><b>No MCP signal found.</b><span>Connect a project with a Codex config or MCP package manifest.</span></div>}</div></div>
         <div className="panel findings-panel"><div className="panel-title"><strong>Readiness findings</strong><span>{issues}</span></div><div className="findings">{scan.findings.map((finding) => <article key={finding.id} className={finding.severity}><span>{finding.severity}</span><strong>{finding.title}</strong><p>{finding.detail}</p></article>)}</div></div>

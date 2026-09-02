@@ -10,7 +10,7 @@ Codex workspaces quietly accumulate MCP definitions, package dependencies, `AGEN
 
 ## What people and agents do together
 
-The person grants a bounded workspace once and sees every scope and proposed change. Codex uses the same page's WebMCP tools to scan, inspect the declared tool surface, ask for the evidence behind a finding, propose hardening, and independently verify the post-change state. In Chrome's `?browser=chrome` mode, the person chooses the exact action and confirms the write; MCPation saves the original in `.mcpation-backups/`, applies only the supported JSON cleanup, and rescans. Codex's embedded browser remains a stable read-only analysis/review path.
+The person grants a bounded workspace once and sees every scope and proposed change. Codex uses the same page's WebMCP tools to scan, inspect the declared tool surface, ask for the evidence behind a finding, propose hardening, execute the exact host handoff in its already approved current workspace, and independently verify the post-change state. MCPation saves the original in `.mcpation-backups/`, applies only the supported JSON cleanup, and rescans. Chrome's `?browser=chrome` mode additionally supports a direct one-picker browser write.
 
 This is materially better than a generic report because the workflow ends in a safe, observable decision: **ready, review, or pause** before the next agent run.
 
